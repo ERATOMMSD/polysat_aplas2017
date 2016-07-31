@@ -1,0 +1,19 @@
+OCAMLBUILD = ocamlbuild -use-ocamlfind
+
+.PHONY: all clean
+
+PROGRAM = polysat
+
+.SUBDIRS: src
+	.DEFAULT: /.PHONY/all
+	all:
+		$(OCAMLBUILD) $(PROGRAM).byte
+	clean:
+		$(OCAMLBUILD) -clean
+
+.DEFAULT: all
+
+all:
+	cp src/$(PROGRAM).byte $(PROGRAM)
+clean:
+	rm $(PROGRAM)
