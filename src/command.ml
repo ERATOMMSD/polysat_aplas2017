@@ -43,7 +43,7 @@ let rec sexp_of_formula sexp =
       Formula.disjunctions (List.map sexp_of_formula args)
   | Sexp.List (Sexp.Atom "not" :: args) ->
       if List.length args = 1 then
-        Formula.not (sexp_of_formula (List.hd args))
+        Formula.Op.not (sexp_of_formula (List.hd args))
       else
         Conv.of_sexp_error "negation accepts only one argument" sexp
   | Sexp.List (Sexp.Atom "=>" :: args) ->
@@ -75,6 +75,7 @@ let rec sexp_of_formula sexp =
 
 type t =
   | Simplify of Formula.t
+  | Interpolant of Formula.t * Formula.t * int
 
 let sexp_of_t sexp =
   match sexp with
@@ -85,6 +86,14 @@ let sexp_of_t sexp =
             Simplify (sexp_of_formula (List.hd args))
           else
             Conv.of_sexp_error "simplify accepts only one argument" sexp
+      | "interpolant" ->
+          if List.length args = 3 then
+            let f1 = sexp_of_formula (List.nth args 0) in
+            let f2 = sexp_of_formula (List.nth args 1) in
+            let d = Conv.int_of_sexp (List.nth args 2) in
+            Interpolant (f1, f2, d)
+          else
+            Conv.of_sexp_error "interpolant accepts two logical formulae and degree" sexp
       | _ -> Conv.of_sexp_error "unknown command" sexp
       end
   | _ -> Conv.of_sexp_error "invalid formula" sexp

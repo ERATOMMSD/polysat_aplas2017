@@ -1,26 +1,36 @@
 module type S = sig
   include Ring.S
-  module VarMap: Map.S
   type var
+  module Monomial: Monomial.S with type var = var 
+  module VarSet: Set.S with type elt = var
+  module VarMap: Map.S with type key = var
   type coeff
   val var: var -> t
   val const: coeff -> t
   val eval: coeff VarMap.t -> t -> t
   exception Not_a_constant
   val to_const: t -> coeff
-  val ( ?? ): var -> t
-  val ( ! ): coeff -> t
-  val ( + ): t -> t -> t
-  val ( - ): t -> t -> t
-  val ( * ): t -> t -> t
-  val ( ** ): t -> int -> t
+  val to_list: t -> (Monomial.t * coeff) list
+  val vars: t -> VarSet.t
+  val degree: t -> int
+  module Op: sig
+    val ( ?: ): var -> t
+    val ( ! ): coeff -> t
+    val ( ~- ): t -> t
+    val ( + ): t -> t -> t
+    val ( - ): t -> t -> t
+    val ( * ): t -> t -> t
+    val ( ** ): t -> int -> t
+  end
 end
 
 module Make(Coeff: Ring.S) (Var: Variable.S) : S with type var = Var.t
                                                   and type coeff = Coeff.t = struct
-  module Mono = Monomial.Make(Var)
+  module Monomial = Monomial.Make(Var)
 
-  module MonoMap = Map.Make(Mono)
+  module MonoMap = Map.Make(Monomial)
+
+  module VarSet = Monomial.VarSet
 
   module VarMap = Map.Make(Var)
 
@@ -34,13 +44,13 @@ module Make(Coeff: Ring.S) (Var: Variable.S) : S with type var = Var.t
     MonoMap.empty
 
   let one =
-    MonoMap.singleton Mono.one Coeff.one
+    MonoMap.singleton Monomial.one Coeff.one
 
   let var x =
-    MonoMap.singleton (Mono.var x 1) Coeff.one
+    MonoMap.singleton (Monomial.var x 1) Coeff.one
 
   let const c =
-    if Coeff.(compare c zero) = 0 then zero else MonoMap.singleton Mono.one c
+    if Coeff.(compare c zero) = 0 then zero else MonoMap.singleton Monomial.one c
 
   let add t1 t2 =
     MonoMap.union
@@ -59,7 +69,7 @@ module Make(Coeff: Ring.S) (Var: Variable.S) : S with type var = Var.t
   let mult t1 t2 =
     let f m c t =
       MonoMap.fold
-        (fun mt ct t -> add (MonoMap.singleton (Mono.mult m mt) (Coeff.mult c ct)) t)
+        (fun mt ct t -> add (MonoMap.singleton (Monomial.mult m mt) (Coeff.mult c ct)) t)
         t
         zero
     in
@@ -74,13 +84,13 @@ module Make(Coeff: Ring.S) (Var: Variable.S) : S with type var = Var.t
 
   let eval map t =
     let f m =
-      Mono.VarSet.fold
+      VarSet.fold
         (fun x t ->
-           let d = Mono.var_degree x m in
+           let d = Monomial.var_degree x m in
            match VarMap.find x map with
            | exception Not_found -> mult (power (var x) d) t
            | c -> mult (power (const c) d) t)
-        (Mono.vars m)
+        (Monomial.vars m)
         one
     in
     MonoMap.fold (fun m c t -> add (mult (f m) (const c)) t) t zero
@@ -89,30 +99,46 @@ module Make(Coeff: Ring.S) (Var: Variable.S) : S with type var = Var.t
 
   let to_const t =
     let m, c = MonoMap.choose t in
-    if MonoMap.cardinal t = 1 && Mono.(compare m one) = 0 then
+    if MonoMap.cardinal t = 1 && Monomial.(compare m one) = 0 then
       c
     else
       raise Not_a_constant
 
+  let to_list t =
+    MonoMap.bindings t
+
+  let vars t =
+    MonoMap.fold (fun m _ vars -> VarSet.union vars (Monomial.vars m))
+      t VarSet.empty
+
+  let degree t =
+    MonoMap.fold (fun m _ d -> max d (Monomial.degree m)) t 0
+
   let pp fmt t =
     let open Format in
-    fprintf fmt "@[<hov>%a@]"
-      (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt "@ + ")
-         (fun fmt (m, c) ->
-            if Mono.(compare m one) = 0 then
-              fprintf fmt "@[<h>%a@]" Coeff.pp c
-            else if Coeff.(compare c one) = 0 then
-              fprintf fmt "@[<h>%a@]" Mono.pp m
-            else
-              fprintf fmt "@[<h>%a * %a@]" Coeff.pp c Mono.pp m))
-      (MonoMap.bindings t)
+    if compare t zero = 0 then
+      pp_print_string fmt "0"
+    else
+      fprintf fmt "@[<hov>%a@]"
+        (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt "@ + ")
+           (fun fmt (m, c) ->
+              if Monomial.(compare m one) = 0 then
+                fprintf fmt "@[<h>%a@]" Coeff.pp c
+              else if Coeff.(compare c one) = 0 then
+                fprintf fmt "@[<h>%a@]" Monomial.pp m
+              else
+                fprintf fmt "@[<h>%a * %a@]" Coeff.pp c Monomial.pp m))
+        (MonoMap.bindings t)
 
-  let ( ?? ) x = var x
-  let ( ! ) = const
-  let ( + ) = add
-  let ( - ) = sub
-  let ( * ) = mult
-  let ( ** ) = power
+  module Op = struct
+    let ( ?: ) x = var x
+    let ( ! ) = const
+    let ( ~- ) t = sub zero t
+    let ( + ) = add
+    let ( - ) = sub
+    let ( * ) = mult
+    let ( ** ) = power
+  end
 end
 
 module Float = Make(struct

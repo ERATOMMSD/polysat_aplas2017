@@ -1,8 +1,14 @@
 module PPoly: Polynomial.S with type var = int
                             and type coeff = Num.num
 
-module Poly: Polynomial.S with type var = string
-                           and type coeff = PPoly.t
+module Poly: sig
+  include Polynomial.S with type var = string
+                        and type coeff = PPoly.t
+  module Matrix: Matrix.S
+  val sos: VarSet.t -> int -> Matrix.t * t
+  val gen_cone: t list -> VarSet.t -> int -> Matrix.t list * t
+  val gen_ideal: t list -> VarSet.t -> int -> Matrix.t list * t
+end
 
 type t
 
@@ -36,20 +42,20 @@ val conjunctions: t list -> t
 
 val pp: Format.formatter -> t -> unit
 
-val ( && ): t -> t -> t
+val vars: t -> Poly.VarSet.t
 
-val ( || ): t -> t -> t
+type conj = { eqzs: Poly.t list; neqzs: Poly.t list; gezs: Poly.t list }
 
-val not: t -> t
+val to_dnf: t -> conj list
 
-val ( := ): t -> t -> t
-
-val ( != ): Poly.t -> Poly.t -> t
-
-val ( >= ): Poly.t -> Poly.t -> t
-
-val ( <= ): Poly.t -> Poly.t -> t
-
-val ( > ): Poly.t -> Poly.t -> t
-
-val ( < ): Poly.t -> Poly.t -> t
+module Op: sig
+  val ( && ): t -> t -> t
+  val ( || ): t -> t -> t
+  val not: t -> t
+  val ( := ): t -> t -> t
+  val ( != ): Poly.t -> Poly.t -> t
+  val ( >= ): Poly.t -> Poly.t -> t
+  val ( <= ): Poly.t -> Poly.t -> t
+  val ( > ): Poly.t -> Poly.t -> t
+  val ( < ): Poly.t -> Poly.t -> t
+end

@@ -14,11 +14,72 @@ module PPoly = Polynomial.Make(struct
     let pp fmt t = Format.fprintf fmt "a%d" t
   end)
 
-module Poly = Polynomial.Make(PPoly)(struct
-    type t = string
-    let compare (t1: t) t2 = compare t1 t2
-    let pp fmt t = Format.pp_print_string fmt t
-  end)
+module Poly = struct
+  module P = Polynomial.Make(struct
+      include PPoly
+      let pp fmt t = Format.fprintf fmt "@[(%a)@]" pp t
+    end)(struct
+      type t = string
+      let compare (t1: t) t2 = compare t1 t2
+      let pp fmt t = Format.pp_print_string fmt t
+    end)
+
+  include P
+
+  module Matrix = Matrix.Make(P)
+
+  let counter = ref 0
+
+  let new_param () =
+    incr counter; const (PPoly.var !counter)
+
+  let sdpvar d =
+    let l = Util.List.count 0 d in
+    let ut =
+      List.map (fun i -> List.map (fun j -> if j < i then new_param () else zero) l) l
+      |> Matrix.of_list_list
+    in
+    let diag =
+      List.map (fun i -> List.map (fun j -> if i = j then new_param () else zero) l) l
+      |> Matrix.of_list_list
+    in
+    Matrix.Op.(ut + diag + !ut)
+
+  let sos vars d =
+    let vars = List.map var (VarSet.elements vars) in
+    let monos =
+      List.mapi
+        (fun i _ -> Util.List.mult_choose vars i)
+        (Util.List.repeat () ((d + 3) / 2))
+      |> List.concat
+      |> List.map (List.fold_left mult one)
+    in
+    let psd = sdpvar (List.length monos) in
+    let basis = Matrix.of_list_list [monos] in
+    (psd, Matrix.(at 0 0 Op.(basis * psd * !basis)))
+
+  let gen_cone tl vars d =
+    let rec power = function
+      | [] -> [[]]
+      | x :: xs ->
+          let l = power xs in
+          l @ List.map (List.cons x) l
+    in
+    let combs = power tl |> List.map (List.fold_left mult one) in
+    List.fold_left
+      (fun (psds, cone) comb ->
+         let psd, sos = sos vars d in
+         (psd :: psds, Op.(cone + sos * comb)))
+      ([], zero) combs
+
+  let gen_ideal tl vars d =
+    List.fold_left
+      (fun (psds, ideal) t ->
+         let psd1, sos1 = sos vars d in
+         let psd2, sos2 = sos vars d in
+         (psd1 :: psd2 :: psds, Op.(ideal + (sos1 - sos2) * t)))
+      ([], zero) tl
+end
 
 module PolySet = Set.Make(Poly)
 
@@ -84,7 +145,7 @@ let negation t =
   let neg_term = function
     | EqZ p -> of_term (NeqZ p)
     | NeqZ p -> of_term (EqZ p)
-    | GeZ p -> conjunction (of_term (GeZ Poly.(zero - p))) (of_term (NeqZ p))
+    | GeZ p -> conjunction (of_term (GeZ Poly.Op.(-p))) (of_term (NeqZ p))
   in
   DisjSet.fold
     (fun conj t ->
@@ -118,16 +179,16 @@ let conjunctions tl =
   List.fold_left conjunction tru tl
 
 let eq p1 p2 =
-  of_term (EqZ Poly.(p1 - p2))
+  of_term (EqZ Poly.Op.(p1 - p2))
 
 let neq p1 p2 =
-  of_term (NeqZ Poly.(p1 - p2))
+  of_term (NeqZ Poly.Op.(p1 - p2))
 
 let ge p1 p2 =
-  of_term (GeZ Poly.(p1 - p2))
+  of_term (GeZ Poly.Op.(p1 - p2))
 
 let le p1 p2 =
-  of_term (GeZ Poly.(p2 - p1))
+  of_term (GeZ Poly.Op.(p2 - p1))
 
 let gt p1 p2 =
   negation (le p1 p2)
@@ -135,22 +196,34 @@ let gt p1 p2 =
 let lt p1 p2 =
   negation (ge p1 p2)
 
-let ( && ) = conjunction
+let vars t =
+  DisjSet.fold
+    (ConjSet.fold
+       (fun (EqZ p | NeqZ p | GeZ p) vars -> Poly.VarSet.union vars (Poly.vars p)))
+    t Poly.VarSet.empty
 
-let ( || ) = disjunction
+type conj = { eqzs: Poly.t list; neqzs: Poly.t list; gezs: Poly.t list }
 
-let not = negation
+let to_dnf t =
+  let conj conj = ConjSet.fold
+      (fun term conj ->
+         match term with
+         | EqZ p -> { conj with eqzs = p :: conj.eqzs }
+         | NeqZ p -> { conj with neqzs = p :: conj.neqzs }
+         | GeZ p -> { conj with gezs = p :: conj.gezs })
+      conj { eqzs = []; neqzs = []; gezs = [] }
+  in
+  List.map conj (DisjSet.elements t)
 
-let ( := ) = implication
-
-let ( == ) = eq
-
-let ( != ) = neq
-
-let ( >= ) = ge
-
-let ( <= ) = le
-
-let ( > ) = gt
-
-let ( < ) = lt
+module Op = struct
+  let ( && ) = conjunction
+  let ( || ) = disjunction
+  let not = negation
+  let ( := ) = implication
+  let ( == ) = eq
+  let ( != ) = neq
+  let ( >= ) = ge
+  let ( <= ) = le
+  let ( > ) = gt
+  let ( < ) = lt
+end
