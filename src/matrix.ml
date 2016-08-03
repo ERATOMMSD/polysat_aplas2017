@@ -4,12 +4,14 @@ module type S = sig
   type elt
   type t
   val of_list_list: elt list list -> t
+  val to_list_list: t -> elt list list
   val at: int -> int -> t -> elt
   val transpose: t -> t
   val add: t -> t -> t
   val sub: t -> t -> t
   val mult: t -> t -> t
   val pp: Format.formatter -> t -> unit
+  val print: out_channel -> t -> unit
   module Op: sig
     val ( ! ): t -> t
     val ( + ): t -> t -> t
@@ -32,6 +34,9 @@ module Make(E: Ring.S) : S with type elt = E.t = struct
         raise Dimention_error
       else
         l
+
+  let to_list_list t =
+    t
 
   let at i j t =
     try List.nth (List.nth t i) j with
@@ -67,9 +72,17 @@ module Make(E: Ring.S) : S with type elt = E.t = struct
     let open Format in
     fprintf fmt "[@[<v>%a@]]"
       (pp_print_list
+         ~pp_sep:(fun fmt () -> fprintf fmt ";@,")
          (fun fmt r -> fprintf fmt "@[<h>%a@]"
              (pp_print_list ~pp_sep:(fun fmt () -> pp_print_string fmt ", ") E.pp)
              r))
+      t
+
+  let print out t =
+    let open Util.Printf in
+    fprintf out "[%a]"
+      (print_list ~sep:";\n"
+         (fun out r -> fprintf out "%a" (print_list ~sep:", " E.print) r))
       t
 
   module Op = struct
@@ -79,4 +92,3 @@ module Make(E: Ring.S) : S with type elt = E.t = struct
     let ( * ) = mult
   end
 end
-

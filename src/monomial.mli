@@ -10,6 +10,7 @@ module type S = sig
   val var_degree: var -> t -> int
   val compare: t -> t -> int
   val pp: Format.formatter -> t -> unit
+  val print: out_channel -> t -> unit
 end
 
 module Make(Var: Variable.S) : S with type VarSet.elt = Var.t

@@ -1,8 +1,9 @@
 module type S = sig
   include Ring.S
   type var
-  module Monomial: Monomial.S with type var = var 
+  module Monomial: Monomial.S with type var = var
   module VarSet: Set.S with type elt = var
+                        and type t = Monomial.VarSet.t
   module VarMap: Map.S with type key = var
   type coeff
   val var: var -> t
@@ -59,12 +60,11 @@ module Make(Coeff: Ring.S) (Var: Variable.S) : S with type var = Var.t
          if Coeff.(compare c zero) = 0 then None else Some c)
       t1 t2
 
+  let neg t =
+    MonoMap.map Coeff.neg t
+
   let sub t1 t2 =
-    MonoMap.union
-      (fun _ c1 c2 ->
-         let c = Coeff.sub c1 c2 in
-         if Coeff.(compare c zero) = 0 then None else Some c)
-      t1 t2
+    add t1 (neg t2)
 
   let mult t1 t2 =
     let f m c t =
@@ -119,7 +119,7 @@ module Make(Coeff: Ring.S) (Var: Variable.S) : S with type var = Var.t
     if compare t zero = 0 then
       pp_print_string fmt "0"
     else
-      fprintf fmt "@[<hov>%a@]"
+      fprintf fmt "@[<b>%a@]"
         (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt "@ + ")
            (fun fmt (m, c) ->
               if Monomial.(compare m one) = 0 then
@@ -129,6 +129,21 @@ module Make(Coeff: Ring.S) (Var: Variable.S) : S with type var = Var.t
               else
                 fprintf fmt "@[<h>%a * %a@]" Coeff.pp c Monomial.pp m))
         (MonoMap.bindings t)
+
+  let print out t =
+    let open Util.Printf in
+    let print_mono out (m, c) =
+      if Monomial.(compare m one) = 0 then
+        fprintf out "%a" Coeff.print c
+      else if Coeff.(compare c one) = 0 then
+        fprintf out "%a" Monomial.print m
+      else
+        fprintf out "%a * %a" Coeff.print c Monomial.print m
+    in
+    if compare t zero = 0 then
+      fprintf out "0"
+    else
+      fprintf out "%a" (print_list ~sep:" + " print_mono) (MonoMap.bindings t)
 
   module Op = struct
     let ( ?: ) x = var x
@@ -145,14 +160,17 @@ module Float = Make(struct
     type t = float
     let zero = 0.
     let one = 1.
+    let neg = (~-.)
     let add = (+.)
     let sub = (-.)
     let mult = ( *.)
     let power t d = t ** float_of_int d
     let compare (t1: float) t2 = compare t1 t2
     let pp = Format.pp_print_float
+    let print out t = Printf.fprintf out "%f" t
   end)(struct
     type t = int
     let compare (t1: int) t2 = compare t1 t2
     let pp fmt t = Format.fprintf fmt "x%d" t
+    let print out t = Printf.fprintf out "x%d" t
   end)

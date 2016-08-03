@@ -10,6 +10,7 @@ module type S = sig
   val var_degree: var -> t -> int
   val compare: t -> t -> int
   val pp: Format.formatter -> t -> unit
+  val print: out_channel -> t -> unit
 end
 
 module Make(Var: Variable.S) : S with type VarSet.elt = Var.t
@@ -56,4 +57,17 @@ module Make(Var: Variable.S) : S with type VarSet.elt = Var.t
               else
                 fprintf fmt "%a^%d" Var.pp x d))
         (VarMap.bindings t)
+
+  let print out t =
+    let open Util.Printf in
+    let print_vars out (x, d) =
+      if d = 1 then
+        fprintf out "%a" Var.print x
+      else
+        fprintf out "%a^%d" Var.print x d
+    in
+    if degree t = 0 then
+      fprintf out "1"
+    else
+      fprintf out "%a" (print_list ~sep:" * " print_vars) (VarMap.bindings t)
 end

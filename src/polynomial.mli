@@ -3,6 +3,7 @@ module type S = sig
   type var
   module Monomial: Monomial.S with type var = var
   module VarSet: Set.S with type elt = var
+                        and type t = Monomial.VarSet.t
   module VarMap: Map.S with type key = var
   type coeff
   val var: var -> t

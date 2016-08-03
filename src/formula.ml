@@ -1,27 +1,39 @@
-module PPoly = Polynomial.Make(struct
-    type t = Num.num
-    let zero = Num.num_of_int 0
-    let one = Num.num_of_int 1
-    let add = Num.add_num
-    let sub = Num.sub_num
-    let mult = Num.mult_num
-    let power t d = Num.(power_num t (num_of_int d))
-    let compare = Num.compare_num
-    let pp fmt t = Format.pp_print_string fmt (Num.string_of_num t)
-  end)(struct
-    type t = int
-    let compare (t1: t) t2 = compare t1 t2
-    let pp fmt t = Format.fprintf fmt "a%d" t
-  end)
+module PPoly = struct
+  module P = Polynomial.Make(struct
+      type t = Num.num
+      let zero = Num.num_of_int 0
+      let one = Num.num_of_int 1
+      let neg = Num.minus_num
+      let add = Num.add_num
+      let sub = Num.sub_num
+      let mult = Num.mult_num
+      let power t d = Num.(power_num t (num_of_int d))
+      let compare = Num.compare_num
+      let pp fmt t = Format.pp_print_string fmt (Num.string_of_num t)
+      let print out t = Printf.fprintf out "%s" (Num.string_of_num t)
+    end)(struct
+      type t = int
+      let compare (t1: t) t2 = compare t1 t2
+      let pp fmt t = Format.fprintf fmt "a%d" t
+      let print out t = Printf.fprintf out "a%d" t
+    end)
+
+  include P
+end
 
 module Poly = struct
   module P = Polynomial.Make(struct
       include PPoly
-      let pp fmt t = Format.fprintf fmt "@[(%a)@]" pp t
+      let pp fmt t =
+        if List.length (to_list t) = 1 then
+          Format.fprintf fmt "@[%a@]" pp t
+        else
+          Format.fprintf fmt "@[(%a)@]" pp t
     end)(struct
       type t = string
       let compare (t1: t) t2 = compare t1 t2
       let pp fmt t = Format.pp_print_string fmt t
+      let print out t = Printf.fprintf out "%s" t
     end)
 
   include P

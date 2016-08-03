@@ -1,3 +1,14 @@
+module Printf = struct
+  include Printf
+
+  let print_list ?(sep=" ") p out l =
+    match l with
+    | [] -> fprintf out ""
+    | x :: xs ->
+        p out x;
+        List.iter (fun x -> fprintf out "%s%a" sep p x) xs
+end
+
 module List = struct
   let rec repeat x n =
     if n > 0 then x :: repeat x (n - 1) else []

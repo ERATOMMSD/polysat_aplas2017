@@ -4,7 +4,7 @@ module PPoly: Polynomial.S with type var = int
 module Poly: sig
   include Polynomial.S with type var = string
                         and type coeff = PPoly.t
-  module Matrix: Matrix.S
+  module Matrix: Matrix.S with type elt = t
   val sos: VarSet.t -> int -> Matrix.t * t
   val gen_cone: t list -> VarSet.t -> int -> Matrix.t list * t
   val gen_ideal: t list -> VarSet.t -> int -> Matrix.t list * t
