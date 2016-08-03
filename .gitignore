@@ -1,6 +1,7 @@
 /src/_build/
 /src/polysat.byte
 /polysat
+/oUnit-*
 
 /.omakedb
 /.omakedb.lock

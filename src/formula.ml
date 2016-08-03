@@ -19,6 +19,8 @@ module PPoly = struct
     end)
 
   include P
+
+  module Op = Polynomial.Operator(P)
 end
 
 module Poly = struct
@@ -37,6 +39,8 @@ module Poly = struct
     end)
 
   include P
+
+  module Op = Polynomial.Operator(P)
 
   module Matrix = Matrix.Make(P)
 

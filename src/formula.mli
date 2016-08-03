@@ -1,5 +1,10 @@
-module PPoly: Polynomial.S with type var = int
-                            and type coeff = Num.num
+module PPoly: sig
+  include Polynomial.S with type var = int
+                        and type coeff = Num.num
+  module Op: Polynomial.Op with type var = var
+                            and type coeff = coeff
+                            and type t = t
+end
 
 module Poly: sig
   include Polynomial.S with type var = string
@@ -8,6 +13,9 @@ module Poly: sig
   val sos: VarSet.t -> int -> Matrix.t * t
   val gen_cone: t list -> VarSet.t -> int -> Matrix.t list * t
   val gen_ideal: t list -> VarSet.t -> int -> Matrix.t list * t
+  module Op: Polynomial.Op with type var = var
+                            and type coeff = coeff
+                            and type t = t
 end
 
 type t

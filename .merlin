@@ -1,4 +1,4 @@
 S src
 B src/_build
 
-PKG ppx_deriving.std sexplib
+PKG ppx_deriving.std sexplib oUnit

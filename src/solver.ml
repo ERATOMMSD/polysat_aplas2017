@@ -12,7 +12,7 @@ let ip_candidate sys1 sys2 vars degree =
   let deg' = if deg' = 0 then degree else degree / deg' in
   let g = Formula.Poly.Op.(g ** deg') in
   let one = Formula.PPoly.one in
-  let cert = Formula.Poly.Op.(!one + f1 + f2 + h1 + h2 + g) in
+  let cert = Formula.Poly.Op.(!:one + f1 + f2 + h1 + h2 + g) in
   (* printf "================================================================================@\n"; *)
   (* printf "psdsf1:@[<v>%a@]@\n" (pp_print_list Formula.Poly.Matrix.pp) psdsf1; *)
   (* printf "f1:@[%a@]@\n" Formula.Poly.pp f1; *)
@@ -27,7 +27,7 @@ let ip_candidate sys1 sys2 vars degree =
   (* printf "================================================================================@\n"; *)
   let zeros = List.map snd (Formula.Poly.to_list cert) in
   let half = Formula.PPoly.const (Num.num_of_string "1/2") in
-  let ip = Formula.Poly.Op.(!half + f1 + h1 + g) in
+  let ip = Formula.Poly.Op.(!:half + f1 + h1 + g) in
   (psdsf1 @ psdsf2 @ psdsh1 @ psdsh2, zeros, ip)
 
 let ip f1 f2 degree =
