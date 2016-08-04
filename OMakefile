@@ -1,6 +1,9 @@
-OCAMLBUILD = ocamlbuild -use-ocamlfind
+.SUBDIRS: src test
+	dummy:
 
 .PHONY: all byte native test doc clean
+
+OCAMLBUILD = ocamlbuild -use-ocamlfind
 
 PROGRAM = polysat
 
