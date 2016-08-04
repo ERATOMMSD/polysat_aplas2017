@@ -1,6 +1,7 @@
-/src/_build/
-/src/polysat.byte
-/polysat
+/_build/
+/*.byte
+/*.native
+/*.docdir
 /oUnit-*
 
 /.omakedb
