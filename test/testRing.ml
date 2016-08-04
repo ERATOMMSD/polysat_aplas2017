@@ -28,13 +28,13 @@ let simple_tests = [
   "neg is inverse", zero, Op.(2 + -2);
   "sub x x is zero", zero, Op.(1 - 1);
   "sub add", 2, Op.(2 + 2 - 2);
-  "0 power is zero", zero, Op.(2 ** 0);
+  "0 power is one", one, Op.(2 ** 0);
   "power2", Op.(-5 * -5), Op.(-5 ** 2);
 ] |> List.map (fun (label, expect, result) ->
     label >:: (fun ctxt ->
         assert_equal ~ctxt ~cmp:equal ~printer:(fun r -> Format.asprintf "%a" pp r)
           expect result))
 
-let tests = "ring.ml" >::: [
+let tests = "Ring" >::: [
     test_list simple_tests;
   ]
