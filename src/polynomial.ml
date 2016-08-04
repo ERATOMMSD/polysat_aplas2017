@@ -1,3 +1,5 @@
+open Util
+
 module type S = sig
   type var
   type coeff
@@ -32,6 +34,8 @@ module Make(Coeff: Ring.Base) (Var: Variable.S) : S with type var = Var.t
   type coeff = Coeff.t
 
   include Ring.Make(struct
+      (* Invariants: A representation map [t] must {e not} have the domain [x]
+         such that [MonoMap.find x t = Coeff.zero]. *)
       type t = coeff MonoMap.t
 
       let zero =
@@ -44,6 +48,7 @@ module Make(Coeff: Ring.Base) (Var: Variable.S) : S with type var = Var.t
         MonoMap.union
           (fun _ c1 c2 ->
              let c = Coeff.add c1 c2 in
+             (* GCing the domain if the calculated coefficient becomes zero *)
              if Coeff.(compare c zero) = 0 then None else Some c)
           t1 t2
 
@@ -51,13 +56,14 @@ module Make(Coeff: Ring.Base) (Var: Variable.S) : S with type var = Var.t
         MonoMap.map Coeff.neg t
 
       let mult t1 t2 =
-        let f m c t =
-          MonoMap.fold
-            (fun mt ct t -> add (MonoMap.singleton (Monomial.mult m mt) (Coeff.mult c ct)) t)
-            t
-            zero
-        in
-        MonoMap.fold (fun m c t -> add (f m c t2) t) t1 zero
+        List.tupling [MonoMap.bindings t1; MonoMap.bindings t2]
+        |> List.map (function
+            | [(m1, c1); (m2, c2)] ->
+                (* Note [c1 * c2] could not be zero since [c1] and [c2] are not
+                   zero *)
+                MonoMap.singleton Monomial.(mult m1 m2) Coeff.(mult c1 c2)
+            | _ -> assert false)
+        |> List.fold_left add zero
 
       let compare t1 t2 =
         MonoMap.compare Coeff.compare t1 t2
@@ -67,19 +73,19 @@ module Make(Coeff: Ring.Base) (Var: Variable.S) : S with type var = Var.t
         if compare t zero = 0 then
           pp_print_string fmt "0"
         else
-          fprintf fmt "@[<b>%a@]"
+          fprintf fmt "%a"
             (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt "@ + ")
                (fun fmt (m, c) ->
                   if Monomial.(compare m one) = 0 then
-                    fprintf fmt "@[<h>%a@]" Coeff.pp c
+                    fprintf fmt "%a" Coeff.pp c
                   else if Coeff.(compare c one) = 0 then
-                    fprintf fmt "@[<h>%a@]" Monomial.pp m
+                    fprintf fmt "%a" Monomial.pp m
                   else
-                    fprintf fmt "@[<h>%a * %a@]" Coeff.pp c Monomial.pp m))
+                    fprintf fmt "%a * %a" Coeff.pp c Monomial.pp m))
             (MonoMap.bindings t)
 
       let print out t =
-        let open Util.Printf in
+        let open Printf in
         let print_mono out (m, c) =
           if Monomial.(compare m one) = 0 then
             fprintf out "%a" Coeff.print c
@@ -98,6 +104,7 @@ module Make(Coeff: Ring.Base) (Var: Variable.S) : S with type var = Var.t
     MonoMap.singleton (Monomial.var x 1) Coeff.one
 
   let const c =
+    (* Pay attension invariants. *)
     if Coeff.(compare c zero) = 0 then zero else MonoMap.singleton Monomial.one c
 
   exception Not_a_constant
@@ -113,14 +120,13 @@ module Make(Coeff: Ring.Base) (Var: Variable.S) : S with type var = Var.t
     MonoMap.bindings t
 
   let vars t =
-    MonoMap.fold (fun m _ vars -> VarSet.union vars (Monomial.vars m))
-      t VarSet.empty
+    MonoMap.fold (fun m _ vars -> VarSet.union vars (Monomial.vars m)) t VarSet.empty
 
   let degree t =
     MonoMap.fold (fun m _ d -> max d (Monomial.degree m)) t 0
 
   let eval map t =
-    let f m =
+    let reduce m =
       VarSet.fold
         (fun x t ->
            let d = Monomial.var_degree x m in
@@ -130,7 +136,7 @@ module Make(Coeff: Ring.Base) (Var: Variable.S) : S with type var = Var.t
         (Monomial.vars m)
         one
     in
-    MonoMap.fold (fun m c t -> add (mult (f m) (const c)) t) t zero
+    MonoMap.fold (fun m c t -> add (mult (reduce m) (const c)) t) t zero
 end
 
 module type Op = sig

@@ -10,6 +10,8 @@ module Printf = struct
 end
 
 module List = struct
+  include List
+
   let rec repeat x n =
     if n > 0 then x :: repeat x (n - 1) else []
 
@@ -33,4 +35,11 @@ module List = struct
           mult_choose xs n @ List.map (List.cons x) (mult_choose l (n - 1))
     else
       [[]]
+
+  let rec tupling (ll : 'a list list) : 'a list list =
+    match ll with
+    | [] -> [[]]
+    | l :: ls ->
+        let ls = tupling ls in
+        List.map (fun x -> List.map (List.cons x) ls) l |> List.concat
 end

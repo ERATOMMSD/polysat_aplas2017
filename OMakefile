@@ -1,19 +1,25 @@
 OCAMLBUILD = ocamlbuild -use-ocamlfind
 
-.PHONY: all clean
+.PHONY: all byte native test doc clean
 
 PROGRAM = polysat
 
-.SUBDIRS: src
-	.DEFAULT: /.PHONY/all
-	all:
-		$(OCAMLBUILD) $(PROGRAM).byte
-	clean:
-		$(OCAMLBUILD) -clean
-
 .DEFAULT: all
 
-all:
-	cp src/$(PROGRAM).byte $(PROGRAM)
+all: byte native doc
+
+byte:
+	$(OCAMLBUILD) $(PROGRAM).byte
+
+native:
+	$(OCAMLBUILD) $(PROGRAM).native
+
+test:
+	$(OCAMLBUILD) -tag package\(oUnit\) -I test test.byte
+	- ./test.byte
+
+doc:
+	$(OCAMLBUILD) 'src/doc.docdir/index.html'
+
 clean:
-	rm $(PROGRAM)
+	$(OCAMLBUILD) -clean

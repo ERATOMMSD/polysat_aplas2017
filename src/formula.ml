@@ -28,9 +28,9 @@ module Poly = struct
       include PPoly
       let pp fmt t =
         if List.length (to_list t) = 1 then
-          Format.fprintf fmt "@[%a@]" pp t
+          Format.fprintf fmt "%a" pp t
         else
-          Format.fprintf fmt "@[(%a)@]" pp t
+          Format.fprintf fmt "(%a)" pp t
     end)(struct
       type t = string
       let compare (t1: t) t2 = compare t1 t2

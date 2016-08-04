@@ -32,7 +32,9 @@ end
 
 (** Signature of an implementation of ring module *)
 module type S = sig
-  include Base
+  type t
+
+  include Base with type t := t
 
   (** Subtraction *)
   val sub: t -> t -> t

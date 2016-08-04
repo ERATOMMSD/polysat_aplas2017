@@ -5,6 +5,9 @@ let print_code psds zeros ip =
     List.map Formula.Poly.Matrix.to_list_list psds
     |> List.concat |> List.concat
   in
+  Format.printf "sdpvar %a;@\n"
+    (Format.pp_print_list ~pp_sep:(fun fmt () -> Format.fprintf fmt " ") Formula.Poly.pp)
+    syms;
   printf "sdpvar %a;\n" (print_list Formula.Poly.print) syms;
   print_newline ();
 
