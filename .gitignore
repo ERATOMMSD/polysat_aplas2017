@@ -5,6 +5,9 @@ oUnit-*
 *.cmt
 *.cmti
 *.o
+*.cma
+*.cmxa
+*.a
 *.run
 *.opt
 *.omc

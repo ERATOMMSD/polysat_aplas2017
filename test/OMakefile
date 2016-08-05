@@ -16,4 +16,4 @@ test: ../src/$(PRODUCT) $(TEST_COMMAND)
 clean:
 	rm -f \
 	  $(filter-proper-targets $(glob $(addsuffix .*, $(FILES)))) \
-	  test
+	  $(TEST_COMMAND)$(EXE) $(TEST_COMMAND).run $(TEST_COMMAND).opt
