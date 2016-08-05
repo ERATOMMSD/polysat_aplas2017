@@ -1,0 +1,28 @@
+FILES = command comparable formula matlab matrix monomial polynomial polysat \
+	printable ring solver util
+
+OCamlProgram($(PRODUCT), $(FILES))
+OCamlLibrary($(PRODUCT), $(FILES))
+
+.DEFAULT: $(PRODUCT)
+
+OCamlDocument(name, files) =
+	protected.mlifiles = $(filter-exists $(addsuffix .mli, $(files)))
+	protected.cmifiles = $(addsuffix .cmi, $(removesuffix $(mlifiles)))
+	$(name).doc: $(mlifiles) $(cmifiles)
+		mkdir -p $@
+		rm -rf $@/*
+		$(OCAMLFIND) ocamldoc -d $@ -html -t $(name) \
+		$(PREFIXED_OCAMLINCLUDES) -package "$(OCAMLPACKS)" \
+		$(mlifiles)
+	return $(name).doc
+
+OCamlDocument(polysat, $(FILES))
+
+doc: polysat.doc
+
+clean:
+	rm -rf \
+	  $(filter-proper-targets $(glob $(addsuffix .*, $(FILES)))) \
+	  $(PRODUCT) \
+	  polysat.doc

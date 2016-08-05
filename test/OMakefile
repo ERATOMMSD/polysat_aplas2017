@@ -1,0 +1,19 @@
+TEST_COMMAND = testrun
+
+FILES = test testMonomial testPolynomial testRing testUtil
+
+OCAMLPACKS += ounit
+
+OCAMLINCLUDES += ../src
+
+OCAML_LIBS += ../src/$(PRODUCT)
+
+OCamlProgram($(TEST_COMMAND), $(FILES))
+
+test: ../src/$(PRODUCT) $(TEST_COMMAND)
+	- ./$(TEST_COMMAND)
+
+clean:
+	rm -f \
+	  $(filter-proper-targets $(glob $(addsuffix .*, $(FILES)))) \
+	  test

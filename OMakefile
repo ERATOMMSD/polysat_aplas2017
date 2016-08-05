@@ -1,28 +1,23 @@
-.PHONY: all byte native test doc clean
+PRODUCT = polysat
+
+OCAMLCFLAGS += -g -safe-string -bin-annot -annot
+
+USE_OCAMLFIND = true
+OCAMLPACKS += num ppx_deriving.std sexplib
+
+# OMake has no default rules to build information files.
+%.annot %.cmt: %.ml %.cmi
+	$(OCamlC) -c $<
+
+%.cmti: %.mli
+	$(OCamlC) -c $<
+
+.PHONY: doc test clean
 
 .SUBDIRS: src test
-	.DEFAULT: /.PHONY/all
 
-OCAMLBUILD = ocamlbuild -use-ocamlfind
-
-PROGRAM = polysat
-
-.DEFAULT: all
-
-all: byte native doc
-
-byte:
-	$(OCAMLBUILD) $(PROGRAM).byte
-
-native:
-	$(OCAMLBUILD) $(PROGRAM).native
-
-test:
-	$(OCAMLBUILD) -tag package\(oUnit\) -I test test.byte
-	- ./test.byte
-
-doc:
-	$(OCAMLBUILD) 'src/doc.docdir/index.html'
+.DEFAULT: src/$(PRODUCT)
+	cp src/$(PRODUCT) $(PRODUCT)
 
 clean:
-	$(OCAMLBUILD) -clean
+	rm -f $(PRODUCT)
