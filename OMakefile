@@ -1,7 +1,7 @@
-.SUBDIRS: src test
-	dummy:
-
 .PHONY: all byte native test doc clean
+
+.SUBDIRS: src test
+	.DEFAULT: /.PHONY/all
 
 OCAMLBUILD = ocamlbuild -use-ocamlfind
 

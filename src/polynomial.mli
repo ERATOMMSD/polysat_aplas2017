@@ -1,27 +1,63 @@
-(** Polynomial module *)
+(** Polynomials
 
-(** Signature of the polynomial module *)
-module type S = sig
-  (** Type of variables *)
+    This module implement polynomials.
+*)
+
+(** Signature of polynomials' variables. *)
+module type Variable = sig
+  type t
+  include Comparable.Base with type t := t
+  include Printable.Base with type t := t
+end
+
+(** Signature of polynomials' coefficients. *)
+module type Coefficient = Ring.Base
+
+(** Signature of operators for polynomials. *)
+module type Op = sig
+  (** The type of variables. *)
   type var
 
-  (** Type of coefficients *)
+  (** The type of coefficitnes. *)
   type coeff
 
-  (** Type of polynomials *)
+  (** The type of polynomials. *)
   type t
 
-  (** Polynoial is ring. *)
-  include Ring.S with type t := t
+  include Ring.Op with type t := t
 
-  (** Monomial module for the variables *)
+  (** Prefix notation of {!Polynomial.S.var} *)
+  val ( ?: ): var -> t
+
+  (** Prefix notation of {!Polynomial.S.const} *)
+  val ( !: ): coeff -> t
+end
+
+(** Signature of an implementation of a polynomial module. *)
+module type S = sig
+  (** The type of variables. *)
+  type var
+
+  (** The type of coefficients. *)
+  type coeff
+
+  (** The type of polynomials. *)
+  type t
+
+  (** Operators. *)
+  module Op: Op with type var = var and type coeff = coeff and type t = t
+
+  (** Polynoial can be a ring. *)
+  include Ring.S with type t := t and module Op := Op
+
+  (** Monomial module of the variables. *)
   module Monomial: Monomial.S with type var = var
 
-  (** Variable set module *)
+  (** Variable set module. *)
   module VarSet: Set.S with type elt = var
                         and type t = Monomial.VarSet.t
 
-  (** Variable map module *)
+  (** Variable map module. *)
   module VarMap: Map.S with type key = var
 
   (** [var x] returns the polynomial [x]. *)
@@ -52,28 +88,6 @@ module type S = sig
 end
 
 (** Functor for building an implementation with the given coefficient type and
-    variable type *)
-module Make(Coeff: Ring.Base) (Var: Variable.S) : S with type var = Var.t
+    variable type. *)
+module Make(Coeff: Coefficient) (Var: Variable) : S with type var = Var.t
                                                      and type coeff = Coeff.t
-
-(** Signature of an operators for polynomials *)
-module type Op = sig
-  type var
-
-  type coeff
-
-  type t
-
-  include Ring.Op with type t := t
-
-  (** Prefix notation of {!Polynomial.S.var} *)
-  val ( ?: ): var -> t
-
-  (** Prefix notation of {!Polynomial.S.const} *)
-  val ( !: ): coeff -> t
-end
-
-(** Functor for building an implementation of operators *)
-module Operator(Poly: S) : Op with type var = Poly.var
-                               and type coeff = Poly.coeff
-                               and type t = Poly.t

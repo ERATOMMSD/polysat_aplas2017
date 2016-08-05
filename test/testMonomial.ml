@@ -4,7 +4,6 @@ module M = Monomial.Make(struct
     type t = string
     let compare = compare
     let pp = Format.pp_print_string
-    let print out s = Printf.fprintf out "%s" s
   end)
 
 open M

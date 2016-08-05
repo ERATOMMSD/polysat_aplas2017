@@ -10,15 +10,11 @@ module M = Make(struct
     let mult = ( * )
     let compare = compare
     let pp = Format.pp_print_int
-    let print out d = Printf.fprintf out "%d" d
   end)(struct
     type t = string
     let compare = compare
     let pp = Format.pp_print_string
-    let print out s = Printf.fprintf out "%s" s
   end)
-
-module Op = Operator(M)
 
 open M
 

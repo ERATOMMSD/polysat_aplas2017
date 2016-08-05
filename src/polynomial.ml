@@ -1,10 +1,28 @@
 open Util
 
+module type Variable = sig
+  type t
+  include Comparable.Base with type t := t
+  include Printable.Base with type t := t
+end
+
+module type Coefficient = Ring.Base
+
+module type Op = sig
+  type var
+  type coeff
+  type t
+  include Ring.Op with type t := t
+  val ( ?: ): var -> t
+  val ( !: ): coeff -> t
+end
+
 module type S = sig
   type var
   type coeff
   type t
-  include Ring.S with type t := t
+  module Op: Op with type var = var and type coeff = coeff and type t = t
+  include Ring.S with type t := t and module Op := Op
   module Monomial: Monomial.S with type var = var
   module VarSet: Set.S with type elt = var
                         and type t = Monomial.VarSet.t
@@ -19,7 +37,7 @@ module type S = sig
   val degree: t -> int
 end
 
-module Make(Coeff: Ring.Base) (Var: Variable.S) : S with type var = Var.t
+module Make(Coeff: Coefficient) (Var: Variable) : S with type var = Var.t
                                                      and type coeff = Coeff.t = struct
   module Monomial = Monomial.Make(Var)
 
@@ -33,7 +51,7 @@ module Make(Coeff: Ring.Base) (Var: Variable.S) : S with type var = Var.t
 
   type coeff = Coeff.t
 
-  include Ring.Make(struct
+  module M = Ring.Make(struct
       (* Invariants: A representation map [t] must {e not} have the domain [x]
          such that [MonoMap.find x t = Coeff.zero]. *)
       type t = coeff MonoMap.t
@@ -83,22 +101,9 @@ module Make(Coeff: Ring.Base) (Var: Variable.S) : S with type var = Var.t
                   else
                     fprintf fmt "%a * %a" Coeff.pp c Monomial.pp m))
             (MonoMap.bindings t)
-
-      let print out t =
-        let open Printf in
-        let print_mono out (m, c) =
-          if Monomial.(compare m one) = 0 then
-            fprintf out "%a" Coeff.print c
-          else if Coeff.(compare c one) = 0 then
-            fprintf out "%a" Monomial.print m
-          else
-            fprintf out "%a * %a" Coeff.print c Monomial.print m
-        in
-        if compare t zero = 0 then
-          fprintf out "0"
-        else
-          fprintf out "%a" (print_list ~sep:" + " print_mono) (MonoMap.bindings t)
     end)
+
+  include (M : Ring.S with type t = M.t and module Op := M.Op)
 
   let var x =
     MonoMap.singleton (Monomial.var x 1) Coeff.one
@@ -137,27 +142,16 @@ module Make(Coeff: Ring.Base) (Var: Variable.S) : S with type var = Var.t
         one
     in
     MonoMap.fold (fun m c t -> add (mult (reduce m) (const c)) t) t zero
-end
 
-module type Op = sig
-  type var
-  type coeff
-  type t
-  include Ring.Op with type t := t
-  val ( ?: ): var -> t
-  val ( !: ): coeff -> t
-end
+  module Op = struct
+    type var = Var.t
 
-module Operator(Poly: S) : Op with type var = Poly.var
-                               and type coeff = Poly.coeff
-                               and type t = Poly.t = struct
-  type var = Poly.var
+    type coeff = Coeff.t
 
-  type coeff = Poly.coeff
+    include M.Op
 
-  include Ring.Operator(Poly)
+    let ( ?: ) = var
 
-  let ( ?: ) = Poly.var
-
-  let ( !: ) = Poly.const
+    let ( !: ) = const
+  end
 end

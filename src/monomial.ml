@@ -1,3 +1,9 @@
+module type Variable = sig
+  type t
+  include Comparable.Base with type t := t
+  include Printable.Base with type t := t
+end
+
 module type S = sig
   type var
   module VarSet: Set.S with type elt = var
@@ -8,19 +14,20 @@ module type S = sig
   val degree: t -> int
   val vars: t -> VarSet.t
   val var_degree: var -> t -> int
-  val compare: t -> t -> int
-  val pp: Format.formatter -> t -> unit
-  val print: out_channel -> t -> unit
+  include Comparable.S with type t := t
+  include Printable.S with type t := t
 end
 
-module Make(Var: Variable.S) : S with type var = Var.t = struct
+module Make(Var: Variable) : S with type var = Var.t = struct
   type var = Var.t
 
   module VarSet = Set.Make(Var)
 
   module VarMap = Map.Make(Var)
 
-  type t = int VarMap.t
+  type monomial = int VarMap.t
+
+  type t = monomial
 
   let one =
     VarMap.empty
@@ -41,33 +48,30 @@ module Make(Var: Variable.S) : S with type var = Var.t = struct
   let var_degree x t =
     try VarMap.find x t with Not_found -> 0
 
-  let compare t1 t2 =
-    VarMap.compare (fun (d1 : int) d2 -> compare d1 d2) t1 t2
+  module C = Comparable.Make(struct
+      type t = monomial
 
-  let pp fmt t =
-    let open Format in
-    if degree t = 0 then
-      fprintf fmt "1"
-    else
-      fprintf fmt "%a"
-        (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt " * ")
-           (fun fmt (x, d) ->
-              if d = 1 then
-                fprintf fmt "%a" Var.pp x
-              else
-                fprintf fmt "%a^%d" Var.pp x d))
-        (VarMap.bindings t)
+      let compare t1 t2 =
+        VarMap.compare (fun (d1 : int) d2 -> compare d1 d2) t1 t2
+    end)
+  include (C : Comparable.S with type t := t)
 
-  let print out t =
-    let open Util.Printf in
-    let print_vars out (x, d) =
-      if d = 1 then
-        fprintf out "%a" Var.print x
-      else
-        fprintf out "%a^%d" Var.print x d
-    in
-    if degree t = 0 then
-      fprintf out "1"
-    else
-      fprintf out "%a" (print_list ~sep:" * " print_vars) (VarMap.bindings t)
+  module P = Printable.Make(struct
+      type t = monomial
+
+      let pp fmt t =
+        let open Format in
+        if degree t = 0 then
+          fprintf fmt "1"
+        else
+          fprintf fmt "%a"
+            (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt " * ")
+               (fun fmt (x, d) ->
+                  if d = 1 then
+                    fprintf fmt "%a" Var.pp x
+                  else
+                    fprintf fmt "%a^%d" Var.pp x d))
+            (VarMap.bindings t)
+    end)
+  include (P : Printable.S with type t:= t)
 end

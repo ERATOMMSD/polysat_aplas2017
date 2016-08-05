@@ -7,10 +7,6 @@ module PPoly: sig
   include Polynomial.S with type var = int
                         and type coeff = Num.num
                         and type t := t
-
-  module Op: Polynomial.Op with type var = var
-                            and type coeff = coeff
-                            and type t = t
 end
 
 (** Polynomial module which coefficients are {!Formula.PPoly} *)
@@ -28,10 +24,6 @@ module Poly: sig
   val gen_cone: t list -> VarSet.t -> int -> Matrix.t list * t
 
   val gen_ideal: t list -> VarSet.t -> int -> Matrix.t list * t
-
-  module Op: Polynomial.Op with type var = var
-                            and type coeff = coeff
-                            and type t = t
 end
 
 (** Type of formulae *)

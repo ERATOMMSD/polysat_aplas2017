@@ -5,9 +5,18 @@ module type Base = sig
   val neg: t -> t
   val add: t -> t -> t
   val mult: t -> t -> t
-  val compare: t -> t -> int
-  val pp: Format.formatter -> t -> unit
-  val print: out_channel -> t -> unit
+  include Comparable.Base with type t := t
+  include Printable.Base with type t := t
+end
+
+module type Op = sig
+  type t
+  val ( ~- ): t -> t
+  val ( + ): t -> t -> t
+  val ( - ): t -> t -> t
+  val ( * ): t -> t -> t
+  val ( ** ): t -> int -> t
+  include Comparable.Op with type t := t
 end
 
 module type S = sig
@@ -15,9 +24,11 @@ module type S = sig
   val sub: t -> t -> t
   val power: t -> int -> t
   val equal: t -> t -> bool
+  module Op: Op with type t = t
 end
 
-module Make(Base: Base) : S with type t = Base.t = struct
+module Make(Base: Base) : S with type t = Base.t =
+struct
   include Base
 
   let sub t1 t2 =
@@ -28,22 +39,19 @@ module Make(Base: Base) : S with type t = Base.t = struct
 
   let equal t1 t2 =
     compare t1 t2 = 0
-end
 
-module type Op = sig
-  type t
-  val ( ~- ): t -> t
-  val ( + ): t -> t -> t
-  val ( - ): t -> t -> t
-  val ( * ): t -> t -> t
-  val ( ** ): t -> int -> t
-end
+  module C = Comparable.Make(Base)
+  include (C : Comparable.S with type t := t and module Op := C.Op)
 
-module Operator(S: S) : Op with type t = S.t = struct
-  type t = S.t
-  let ( ~- ) = S.neg
-  let ( + ) = S.add
-  let ( - ) = S.sub
-  let ( * ) = S.mult
-  let ( ** ) = S.power
+  module Op = struct
+    include C.Op
+    let ( ~- ) = neg
+    let ( + ) = add
+    let ( - ) = sub
+    let ( * ) = mult
+    let ( ** ) = power
+  end
+
+  module P = Printable.Make(Base)
+  include (P : Printable.S with type t := t)
 end

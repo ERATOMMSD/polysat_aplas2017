@@ -1,5 +1,12 @@
 (** Monomial module *)
 
+(** Signature for variables of monomials. *)
+module type Variable = sig
+  type t
+  include Comparable.Base with type t := t
+  include Printable.Base with type t := t
+end
+
 (** Signature of an implementation of monomial module *)
 module type S = sig
   (** Type of variables  *)
@@ -30,17 +37,12 @@ module type S = sig
   (** [var_degree x m] returns the degree of [x] in [m]. *)
   val var_degree: var -> t -> int
 
-  (** [compare] defines total ordering between two monomials.  The ordering
-      strongly depends on the given variable ordering and could be unexpected
-      except equality checks. *)
-  val compare: t -> t -> int
+  (** The ordering strongly depends on the given variable ordering and could be
+      unexpected except equality checks. *)
+  include Comparable.S with type t := t
 
-  (** Pretty printer *)
-  val pp: Format.formatter -> t -> unit
-
-  (** Unformatting printer *)
-  val print: out_channel -> t -> unit
+  include Printable.S with type t := t
 end
 
 (** Functor for buliding an implementation with the given variable type *)
-module Make(Var: Variable.S) : S with type var = Var.t
+module Make(Var: Variable) : S with type var = Var.t
