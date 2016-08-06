@@ -10,6 +10,12 @@ let print_code psds zeros ip cert =
     syms;
   print_newline ();
 
+  let vars = Formula.Poly.vars cert |> Formula.Poly.VarSet.elements in
+  printf "@[<h>sdpvar %a;@]@\n"
+    (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt " ") pp_print_string)
+    vars;
+  print_newline ();
+
   let l = Util.List.count 0 (List.length psds) in
   printf "@[<v>%a@]@\n"
     (pp_print_list
@@ -27,13 +33,13 @@ let print_code psds zeros ip cert =
     zeros;
   print_newline ();
 
-  printf "optimize(F);@\n";
-  print_newline ();
-
-  let vars = Formula.Poly.vars ip |> Formula.Poly.VarSet.elements in
-  printf "@[<h>sdpvar %a;@]@\n"
+  printf "@[<h>ip = %a;@]@\n" Formula.Poly.pp ip;
+  printf "obj = norm(coefficients(ip, [%a]), 1);@\n"
     (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt " ") pp_print_string)
     vars;
+  print_newline ();
+
+  printf "optimize(F, obj);@\n";
   print_newline ();
 
   printf "@[<v>%a@]@\n"
