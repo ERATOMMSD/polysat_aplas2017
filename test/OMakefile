@@ -11,7 +11,7 @@ OCAML_LIBS += ../src/$(PRODUCT)
 OCamlProgram($(TEST_COMMAND), $(FILES))
 
 test: ../src/$(PRODUCT) $(TEST_COMMAND)
-	- ./$(TEST_COMMAND)
+	- ./$(TEST_COMMAND) -no-output-file
 
 clean: .PHONY/../src/clean
 	rm -f \
