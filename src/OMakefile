@@ -19,6 +19,8 @@ OCamlDocument(name, files) =
 
 OCamlDocument(polysat, $(FILES))
 
+test: .PHONY/../test/test
+
 doc: polysat.doc
 
 clean:

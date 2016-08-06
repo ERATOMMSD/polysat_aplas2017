@@ -32,4 +32,8 @@ let simple_tests = [
 
 let tests = "polynomial.ml" >::: [
     test_list simple_tests;
+    "constance1" >:: (fun ctxt ->
+        assert_equal 4 (to_const (const 4)));
+    "constance2" >:: (fun ctxt ->
+        assert_equal 0 (to_const (const 0)));
   ]

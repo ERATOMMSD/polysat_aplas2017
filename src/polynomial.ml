@@ -115,11 +115,11 @@ module Make(Coeff: Coefficient) (Var: Variable) : S with type var = Var.t
   exception Not_a_constant
 
   let to_const t =
-    let m, c = MonoMap.choose t in
-    if MonoMap.cardinal t = 1 && Monomial.(compare m one) = 0 then
-      c
+    if MonoMap.cardinal t = 1 then
+      let m, c = MonoMap.choose t in
+      if Monomial.(equal m one) then c else raise Not_a_constant
     else
-      raise Not_a_constant
+      Coeff.zero
 
   let to_list t =
     MonoMap.bindings t
