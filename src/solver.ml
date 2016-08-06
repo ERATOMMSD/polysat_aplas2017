@@ -19,7 +19,7 @@ let ip_candidate sys1 sys2 vars degree =
   let ip = Formula.Poly.Op.(!:half + f1 + h1 + g) in
   (psdsf1 @ psdsf2 @ psdsh1 @ psdsh2, zeros, ip, cert)
 
-let ip f1 f2 degree =
+let ip f1 f2 template degree =
   let vars1 = Formula.vars f1 in
   let vars2 = Formula.vars f2 in
   let vars = Formula.Poly.VarSet.union vars1 vars2 in
@@ -44,7 +44,7 @@ let ip f1 f2 degree =
            Some c)
     |> List.reduce_options
   in
-  (* synchronize ips *)
+  (* synchronize candidate ips *)
   let rev_ips = List.rev ips in
   let sync_coeffs =
     List.map2
@@ -54,4 +54,21 @@ let ip f1 f2 degree =
       (List.hd rev_ips :: rev_ips |> List.rev)
     |> List.concat
   in
-  (psds, zeros @ loose_coeffs @ sync_coeffs, (List.hd ips), certs)
+  (* synchronize template *)
+  let template = match template with
+    | None -> snd (Formula.Poly.sos vars degree)
+    | Some p -> p
+  in
+  let monos_in_templ = Formula.Poly.to_list template |> List.map fst in
+  let ip = List.hd ips in
+  let unuse_coeffs =
+    Formula.Poly.to_list ip
+    |> List.map
+      (fun (m, c) ->
+         if List.exists (Formula.Poly.Monomial.equal m) monos_in_templ then
+           None
+         else
+           Some c)
+    |> List.reduce_options
+  in
+  (psds, zeros @ loose_coeffs @ sync_coeffs @ unuse_coeffs, ip, certs)
