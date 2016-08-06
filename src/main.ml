@@ -5,8 +5,8 @@ let run commands =
       | Command.Simplify f ->
           printf "%a@\n" Formula.pp f
       | Command.Interpolant (f1, f2, deg) ->
-          let psds, zeros, ips, certs = Solver.ip f1 f2 deg in
-          Matlab.print_code psds zeros (List.hd ips) (List.hd certs)
+          let psds, zeros, ip, certs = Solver.ip f1 f2 deg in
+          Matlab.print_code psds zeros ip (List.hd certs)
     ) commands
 
 let () =

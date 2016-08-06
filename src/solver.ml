@@ -31,8 +31,9 @@ let ip f1 f2 degree =
          (psds' @ psds, zeros' @ zeros, ip :: ips, cert :: certs))
       ([], [], [], [])
   in
+  (* interpolant should have only shared variables between f1 f2 *)
   let common_vars = Formula.Poly.VarSet.inter vars1 vars2 in
-  let common_fact =
+  let loose_coeffs =
     List.map Formula.Poly.to_list ips
     |> List.concat
     |> List.map
@@ -43,4 +44,14 @@ let ip f1 f2 degree =
            Some c)
     |> List.reduce_options
   in
-  (psds, zeros @ common_fact, ips, certs)
+  (* synchronize ips *)
+  let rev_ips = List.rev ips in
+  let sync_coeffs =
+    List.map2
+      (fun ip1 ip2 ->
+         Formula.Poly.to_list (Formula.Poly.Op.(ip1 - ip2)) |> List.map snd)
+      (List.hd ips :: ips)
+      (List.hd rev_ips :: rev_ips |> List.rev)
+    |> List.concat
+  in
+  (psds, zeros @ loose_coeffs @ sync_coeffs, (List.hd ips), certs)
