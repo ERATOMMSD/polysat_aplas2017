@@ -1,6 +1,6 @@
 open Format
 
-let print_code psds zeros ip =
+let print_code psds zeros ip cert =
   let syms =
     List.map Formula.Poly.Matrix.to_list_list psds
     |> List.concat |> List.concat
@@ -22,8 +22,8 @@ let print_code psds zeros ip =
        (fun fmt d -> fprintf fmt "Q%d >= 0" d))
     l;
   printf "@[<v>%a@]@]];@\n"
-    (pp_print_list
-       (fun fmt c -> fprintf fmt "@[<h>%a == 0;@]" Formula.PPoly.pp c))
+    (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt ";@,")
+       (fun fmt c -> fprintf fmt "@[<h>%a == 0@]" Formula.PPoly.pp c))
     zeros;
   print_newline ();
 
@@ -43,4 +43,5 @@ let print_code psds zeros ip =
   print_newline ();
 
   printf "@[<h>ip = %a;@]@\n" Formula.Poly.pp ip;
+  printf "@[<h>cert = %a;@]@\n" Formula.Poly.pp cert;
   printf "sdisplay(ip);\n"

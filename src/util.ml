@@ -36,10 +36,12 @@ module List = struct
     else
       [[]]
 
-  let rec tupling (ll : 'a list list) : 'a list list =
-    match ll with
-    | [] -> [[]]
-    | l :: ls ->
-        let ls = tupling ls in
-        List.map (fun x -> List.map (List.cons x) ls) l |> List.concat
+  let rec tupling l1 l2 =
+    List.map (fun a1 -> List.map (fun a2 -> (a1, a2)) l2) l1
+    |> List.concat
+
+  let rec reduce_options = function
+    | [] -> []
+    | None :: xs -> reduce_options xs
+    | Some x :: xs -> x :: reduce_options xs
 end

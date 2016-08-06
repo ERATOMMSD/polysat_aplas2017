@@ -74,13 +74,11 @@ module Make(Coeff: Coefficient) (Var: Variable) : S with type var = Var.t
         MonoMap.map Coeff.neg t
 
       let mult t1 t2 =
-        List.tupling [MonoMap.bindings t1; MonoMap.bindings t2]
-        |> List.map (function
-            | [(m1, c1); (m2, c2)] ->
-                (* Note [c1 * c2] could not be zero since [c1] and [c2] are not
+        List.tupling (MonoMap.bindings t1) (MonoMap.bindings t2)
+        |> List.map (fun ((m1, c1), (m2, c2)) ->
+            (* Note [c1 * c2] could not be zero since [c1] and [c2] are not
                    zero *)
-                MonoMap.singleton Monomial.(mult m1 m2) Coeff.(mult c1 c2)
-            | _ -> assert false)
+            MonoMap.singleton Monomial.(mult m1 m2) Coeff.(mult c1 c2))
         |> List.fold_left add zero
 
       let compare t1 t2 =
