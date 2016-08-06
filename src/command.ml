@@ -3,9 +3,6 @@ open Sexplib
 let var_regexp =
   Str.regexp "[a-z]+"
 
-let par_regexp =
-  Str.regexp "'[a-z]+"
-
 let rec sexp_of_poly ?(is_templ=false) sexp =
   match sexp with
   | Sexp.Atom i ->
@@ -13,7 +10,7 @@ let rec sexp_of_poly ?(is_templ=false) sexp =
       | exception Failure _ ->
           if Str.string_match var_regexp i 0 then
             Formula.Poly.var i
-          else if Str.string_match par_regexp i 0 then
+          else if i = "?" then
             if is_templ then Formula.Poly.const (Formula.PPoly.var 0)
             else Conv.of_sexp_error "template polynomial cannot be in here" sexp
           else
