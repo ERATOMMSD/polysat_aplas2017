@@ -13,7 +13,7 @@ OCamlProgram($(TEST_COMMAND), $(FILES))
 test: ../src/$(PRODUCT) $(TEST_COMMAND)
 	- ./$(TEST_COMMAND)
 
-clean:
+clean: .PHONY/../src/clean
 	rm -f \
 	  $(filter-proper-targets $(glob $(addsuffix .*, $(FILES)))) \
 	  $(TEST_COMMAND)$(EXE) $(TEST_COMMAND).run $(TEST_COMMAND).opt
