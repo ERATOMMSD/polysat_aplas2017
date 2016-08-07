@@ -7,14 +7,15 @@ OCamlLibrary($(PRODUCT), $(FILES))
 .DEFAULT: $(PRODUCT)
 
 OCamlDocument(name, files) =
+	protected.mlfiles = $(addsuffix .ml, $(files))
 	protected.mlifiles = $(filter-exists $(addsuffix .mli, $(files)))
 	protected.cmifiles = $(addsuffix .cmi, $(removesuffix $(mlifiles)))
-	$(name).doc: $(mlifiles) $(cmifiles)
+	$(name).doc: $(mlfiles) $(mlifiles) $(cmifiles)
 		mkdir -p $@
 		rm -rf $@/*
 		$(OCAMLFIND) ocamldoc -d $@ -html -t $(name) \
 		$(PREFIXED_OCAMLINCLUDES) -package "$(OCAMLPACKS)" \
-		$(mlifiles)
+		$(mlfiles) $(mlifiles)
 	return $(name).doc
 
 OCamlDocument(polysat, $(FILES))

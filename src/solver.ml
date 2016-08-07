@@ -1,6 +1,31 @@
-open Util
-open Format
+(** Solver for an interpolant generation problem *)
 
+open Util
+
+(** [ip_candidate sys1 sys2 vars degree] generates an interpolant candidate
+    between semi-algebraic system (SAS) [sys1] and [sys2].
+
+    The return value is a quadruple consisting of:
+    - positive semi definite parameter variables matrix constraints
+    - parameter variables linear equality constraints
+    - an interpolant candidate
+    - a certificate.
+
+    In order to have an actual interpolant, solve the constraints and then
+    assign values into parameter variables in the interpolant candidate.
+
+    This generation is based on the paper \[Liyun Dai, et al. CAV 2013\].
+
+    @param sys1 is the SAS implying the interpolant.
+
+    @param sys2 is the SAS contradicting the interpolant.
+
+    @param vars is the variables used in a problem space.  Note that the
+    variables could contain more variables than in [sys1] and [sys2].
+
+    @param degree is the polynomial degree used when generating cones and ideals
+    in the theorem.
+*)
 let ip_candidate sys1 sys2 vars degree =
   let psdsf1, f1 = Formula.Poly.gen_cone sys1.Formula.gezs vars degree in
   let psdsf2, f2 = Formula.Poly.gen_cone sys2.Formula.gezs vars degree in
@@ -19,6 +44,9 @@ let ip_candidate sys1 sys2 vars degree =
   let ip = Formula.Poly.Op.(!:half + f1 + h1 + g) in
   (psdsf1 @ psdsf2 @ psdsh1 @ psdsh2, zeros, ip, cert)
 
+(** [ip f1 f2 template degree] generates an interpolant candidate with the same
+    shape of the given interpolant [template] between two formula [f1] and [f2].
+    For details see {!ip_candidate}. *)
 let ip f1 f2 template degree =
   let vars1 = Formula.vars f1 in
   let vars2 = Formula.vars f2 in
