@@ -30,7 +30,7 @@ let simple_tests = [
         assert_equal ~ctxt ~cmp:equal ~printer:(fun p -> Format.asprintf "%a" pp p)
           expect result))
 
-let tests = "polynomial.ml" >::: [
+let tests = "Polynomial" >::: [
     test_list simple_tests;
     "constance1" >:: (fun ctxt ->
         assert_equal 4 (to_const (const 4)));

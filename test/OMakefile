@@ -1,6 +1,6 @@
 TEST_COMMAND = testrun
 
-FILES = test testMonomial testPolynomial testRing testUtil
+FILES = test testFormula testMonomial testPolynomial testRing testUtil
 
 OCAMLPACKS += ounit
 

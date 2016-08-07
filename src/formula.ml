@@ -1,3 +1,5 @@
+open Util
+
 module PPoly = struct
   module P = Polynomial.Make(struct
       type t = Num.num
@@ -121,32 +123,29 @@ let of_term term =
 
 let disjunction t1 t2 =
   match DisjSet.equal t1 tru, DisjSet.equal t2 tru with
-  | true, _ -> t2
-  | _, true -> t1
+  | (true, _ | _, true) -> tru
   | _ -> DisjSet.union t1 t2
 
+let disjunctions tl =
+  List.fold_left disjunction fls tl
+
 let conjunction t1 t2 =
-  let is_contra conj =
-    let eq, neq = ConjSet.fold
-        (fun term (eq, neq) ->
-           match term with
-           | EqZ p -> (PolySet.add p eq, neq)
-           | NeqZ p -> (eq, PolySet.add p neq)
-           | GeZ _ -> (eq, neq))
-        conj (PolySet.empty, PolySet.empty)
-    in
-    not (PolySet.is_empty (PolySet.inter eq neq))
+  let is_contra c1 c2 =
+    List.tupling (ConjSet.elements c1) (ConjSet.elements c2)
+    |> List.exists
+      (function
+        | ((EqZ p1, NeqZ p2) | (NeqZ p1, EqZ p2)) ->
+            Poly.equal p1 p2
+        | _ -> false)
   in
-  DisjSet.fold
-    (fun conj1 t ->
-       disjunction
-         (DisjSet.fold
-            (fun conj2 t ->
-               let conj = ConjSet.union conj1 conj2 in
-               if is_contra conj then t else disjunction (DisjSet.singleton conj) t)
-            t2 fls)
-         t)
-    t1 fls
+  List.tupling (DisjSet.elements t1) (DisjSet.elements t2)
+  |> List.map
+    (fun (conj1, conj2) ->
+       if is_contra conj1 conj2 then fls else ConjSet.union conj1 conj2 |> DisjSet.singleton)
+  |> disjunctions
+
+let conjunctions tl =
+  List.fold_left conjunction tru tl
 
 let negation t =
   let neg_term = function
@@ -160,6 +159,9 @@ let negation t =
          (ConjSet.fold (fun term t -> disjunction (neg_term term) t) conj fls)
          t)
     t tru
+
+let implication t1 t2 =
+  disjunction (negation t1) t2
 
 let pp fmt t =
   let open Format in
@@ -175,15 +177,6 @@ let pp fmt t =
               (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt "@ && ") pp_term)
               (ConjSet.elements conj)))
       (DisjSet.elements t)
-
-let implication t1 t2 =
-  disjunction (negation t1) t2
-
-let disjunctions tl =
-  List.fold_left disjunction fls tl
-
-let conjunctions tl =
-  List.fold_left conjunction tru tl
 
 let eq p1 p2 =
   of_term (EqZ Poly.Op.(p1 - p2))

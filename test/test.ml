@@ -5,5 +5,6 @@ let () = run_test_tt_main begin "Polysat" >::: [
     TestMonomial.tests;
     TestRing.tests;
     TestPolynomial.tests;
+    TestFormula.tests;
   ]
   end
