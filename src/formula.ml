@@ -96,14 +96,16 @@ type term =
   | EqZ of Poly.t
   | NeqZ of Poly.t
   | GeZ of Poly.t
+  | GtZ of Poly.t
 [@@deriving ord]
 
 let pp_term fmt term =
   let open Format in
   match term with
-  | EqZ p -> fprintf fmt "@[%a == 0@]" Poly.pp p
-  | NeqZ p -> fprintf fmt "@[%a != 0@]" Poly.pp p
-  | GeZ p -> fprintf fmt "@[%a >= 0@]" Poly.pp p
+  | EqZ p -> fprintf fmt "%a == 0" Poly.pp p
+  | NeqZ p -> fprintf fmt "%a != 0" Poly.pp p
+  | GeZ p -> fprintf fmt "%a >= 0" Poly.pp p
+  | GtZ p -> fprintf fmt "%a > 0" Poly.pp p
 
 module ConjSet = Set.Make(struct
     type t = term
@@ -151,7 +153,8 @@ let negation t =
   let neg_term = function
     | EqZ p -> of_term (NeqZ p)
     | NeqZ p -> of_term (EqZ p)
-    | GeZ p -> conjunction (of_term (GeZ Poly.Op.(-p))) (of_term (NeqZ p))
+    | GeZ p -> of_term (GtZ Poly.Op.(-p))
+    | GtZ p -> of_term (GeZ Poly.Op.(-p))
   in
   DisjSet.fold
     (fun conj t ->
@@ -199,7 +202,7 @@ let lt p1 p2 =
 let vars t =
   DisjSet.fold
     (ConjSet.fold
-       (fun (EqZ p | NeqZ p | GeZ p) vars -> Poly.VarSet.union vars (Poly.vars p)))
+       (fun (EqZ p | NeqZ p | GeZ p | GtZ p) vars -> Poly.VarSet.union vars (Poly.vars p)))
     t Poly.VarSet.empty
 
 type conj = { eqzs: Poly.t list; neqzs: Poly.t list; gezs: Poly.t list }
@@ -210,7 +213,8 @@ let to_dnf t =
          match term with
          | EqZ p -> { conj with eqzs = p :: conj.eqzs }
          | NeqZ p -> { conj with neqzs = p :: conj.neqzs }
-         | GeZ p -> { conj with gezs = p :: conj.gezs })
+         | GeZ p -> { conj with gezs = p :: conj.gezs }
+         | GtZ p -> { conj with gezs = p :: conj.gezs; neqzs = p :: conj.neqzs })
       conj { eqzs = []; neqzs = []; gezs = [] }
   in
   List.map conj (DisjSet.elements t)
