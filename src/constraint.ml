@@ -1,4 +1,4 @@
-(** Solver for an interpolant generation problem *)
+(** Constraint generator for an interpolant generation problem *)
 
 open Util
 

@@ -1,5 +1,5 @@
-FILES = command comparable formula main matlab matrix monomial polynomial \
-	printable ring solver util
+FILES = command comparable constraint formula main matlab matrix monomial \
+	polynomial printable ring util
 
 OCamlProgram($(PRODUCT), $(FILES))
 OCamlLibrary($(PRODUCT), $(FILES))
