@@ -5,10 +5,10 @@ open Util
 (** [ip_candidate sys1 sys2 vars degree] generates an interpolant candidate
     between semi-algebraic system (SAS) [sys1] and [sys2].
 
-    The return value is a quadruple consisting of:
-    - positive semi definite parameter variables matrix constraints
-    - parameter variables linear equality constraints
-    - an interpolant candidate
+    The return value is the quadruple consisting of:
+    - positive semi definite parameter variables matrix constraints,
+    - parameter variables linear equality constraints,
+    - an interpolant candidate, and
     - a certificate.
 
     In order to have an actual interpolant, solve the constraints and then
@@ -82,21 +82,19 @@ let ip f1 f2 template degree =
       (List.hd rev_ips :: rev_ips |> List.rev)
     |> List.concat
   in
-  (* synchronize template *)
-  let template = match template with
-    | None -> snd (Formula.Poly.sos vars degree)
-    | Some p -> p
-  in
-  let monos_in_templ = Formula.Poly.to_list template |> List.map fst in
   let ip = List.hd ips in
-  let unuse_coeffs =
-    Formula.Poly.to_list ip
-    |> List.map
-      (fun (m, c) ->
-         if List.exists (Formula.Poly.Monomial.equal m) monos_in_templ then
-           None
-         else
-           Some c)
-    |> List.reduce_options
+  (* synchronize template if exists *)
+  let unuse_coeffs = match template with
+    | None -> []
+    | Some p ->
+        let monos_in_templ = Formula.Poly.to_list p |> List.map fst in
+        Formula.Poly.to_list ip
+        |> List.map
+          (fun (m, c) ->
+             if List.exists (Formula.Poly.Monomial.equal m) monos_in_templ then
+               None
+             else
+               Some c)
+        |> List.reduce_options
   in
   (psds, zeros @ loose_coeffs @ sync_coeffs @ unuse_coeffs, ip, certs)
