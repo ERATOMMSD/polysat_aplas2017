@@ -1,10 +1,9 @@
 PolySAT
 ====
 
-An implementation of interpolant synthesize by [Liyun Dai, et al. CAV 2013][^1]
-and a bit more features.
+An implementation of interpolant synthesize by [1] and a bit more features.
 
-[^1]: Liyun Dai, Bican Xia, and Naijun Zhan. In the Proc.\ of CAV, pp.364--380,
+[1] Liyun Dai, Bican Xia, and Naijun Zhan. In the Proc. of CAV, pp.364--380,
     2013.
 
 ## Requirements
