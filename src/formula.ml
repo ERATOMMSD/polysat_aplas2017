@@ -81,6 +81,20 @@ module Poly = struct
          (psd :: psds, Op.(cone + sos * comb)))
       ([], zero) combs
 
+  let gen_strict_cone tl d =
+    let combs =
+      List.mapi
+        (fun i _ -> Util.List.mult_choose tl i)
+        (Util.List.repeat () (d+2))
+      |> List.concat
+      |> List.map (List.fold_left mult one)
+    in
+    List.fold_left
+      (fun (psds, strict_cone, sum_of_coefficients_minus_1) comb ->
+        let psd, nonnegative_coeff = sos P.Monomial.VarSet.empty 0 in
+        (psd :: psds, Op.(strict_cone + nonnegative_coeff * comb), PPoly.Op.(to_const nonnegative_coeff + sum_of_coefficients_minus_1)))
+      ([], zero, PPoly.P.(neg one)) combs
+      
   let gen_ideal tl vars d =
     List.fold_left
       (fun (psds, ideal) t ->
@@ -194,10 +208,12 @@ let le p1 p2 =
   of_term (GeZ Poly.Op.(p2 - p1))
 
 let gt p1 p2 =
-  negation (le p1 p2)
+  (* negation (le p1 p2) *)
+  of_term (GtZ Poly.Op.(p1 - p2))
 
 let lt p1 p2 =
-  negation (ge p1 p2)
+  (* negation (ge p1 p2) *)
+  of_term (GtZ Poly.Op.(p2 - p1))
 
 let vars t =
   DisjSet.fold
@@ -205,17 +221,17 @@ let vars t =
        (fun (EqZ p | NeqZ p | GeZ p | GtZ p) vars -> Poly.VarSet.union vars (Poly.vars p)))
     t Poly.VarSet.empty
 
-type conj = { eqzs: Poly.t list; neqzs: Poly.t list; gezs: Poly.t list }
+type conj = { eqzs: Poly.t list; gtzs: Poly.t list; gezs: Poly.t list }
 
 let to_dnf t =
   let conj conj = ConjSet.fold
       (fun term conj ->
          match term with
          | EqZ p -> { conj with eqzs = p :: conj.eqzs }
-         | NeqZ p -> { conj with neqzs = p :: conj.neqzs }
+         | NeqZ p -> { conj with gtzs = Poly.power p 2 :: conj.gtzs }
          | GeZ p -> { conj with gezs = p :: conj.gezs }
-         | GtZ p -> { conj with gezs = p :: conj.gezs; neqzs = p :: conj.neqzs })
-      conj { eqzs = []; neqzs = []; gezs = [] }
+         | GtZ p -> { conj with gtzs = p :: conj.gtzs })
+      conj { eqzs = []; gtzs = []; gezs = [] }
   in
   List.map conj (DisjSet.elements t)
 

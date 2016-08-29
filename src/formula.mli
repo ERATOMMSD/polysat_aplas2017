@@ -23,6 +23,8 @@ module Poly: sig
 
   val gen_cone: t list -> VarSet.t -> int -> Matrix.t list * t
 
+  val gen_strict_cone: t list -> int -> Matrix.t list * t * PPoly.t
+                                                               
   val gen_ideal: t list -> VarSet.t -> int -> Matrix.t list * t
 end
 
@@ -78,7 +80,7 @@ val pp: Format.formatter -> t -> unit
 val vars: t -> Poly.VarSet.t
 
 (** Type of conjunctions of (in)equalities *)
-type conj = { eqzs: Poly.t list; neqzs: Poly.t list; gezs: Poly.t list }
+type conj = { eqzs: Poly.t list; gtzs: Poly.t list; gezs: Poly.t list }
 
 (** [to_dnf t] returns the DNF-form of [t]. *)
 val to_dnf: t -> conj list
