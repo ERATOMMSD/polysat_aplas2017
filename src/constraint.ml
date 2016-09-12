@@ -50,52 +50,22 @@ let ip f1 f2 template degree =
   let vars1 = Formula.vars f1 in
   let vars2 = Formula.vars f2 in
   let vars = Formula.Poly.VarSet.union vars1 vars2 in
-  let psds, zeros, ips =
+  let sdps =
     List.tupling (Formula.to_dnf f1) (Formula.to_dnf f2)
     |> List.map (fun (sys1, sys2) -> ip_candidate sys1 sys2 vars degree)
-    |> List.fold_left
-      (fun (psds, zeros, ips) (psds', zeros', ip) ->
-         (psds' @ psds, zeros' @ zeros, ip :: ips))
-      ([], [], [])
   in
   (* interpolant should have only shared variables between f1 f2 *)
   let common_vars = Formula.Poly.VarSet.inter vars1 vars2 in
-  let loose_coeffs =
-    List.map Formula.Poly.to_list ips
-    |> List.concat
+  let loose_coeffs ip =
+    Formula.Poly.to_list ip
     |> List.map
-      (fun (m, c) ->
-         if Formula.Poly.VarSet.subset (Formula.Poly.Monomial.vars m) common_vars then
-           None
-         else
-           Some c)
+         (fun (m, c) ->
+           if Formula.Poly.VarSet.subset (Formula.Poly.Monomial.vars m) common_vars then
+             None
+           else
+             Some c)
     |> List.reduce_options
   in
-  (* synchronize candidate ips *)
-  let rev_ips = List.rev ips in
-  let sync_coeffs =
-    List.map2
-      (fun ip1 ip2 ->
-         Formula.Poly.to_list (Formula.Poly.Op.(ip1 - ip2)) |> List.map snd)
-      (List.hd ips :: ips)
-      (List.hd rev_ips :: rev_ips |> List.rev)
-    |> List.concat
-  in
-  let ip = List.hd ips in
-  (* synchronize template if exists *)
-  let unuse_coeffs = match template with
-    | None -> []
-    | Some p ->
-        let monos_in_templ = Formula.Poly.to_list p |> List.map fst in
-        Formula.Poly.to_list ip
-        |> List.map
-          (fun (m, c) ->
-             if List.exists (Formula.Poly.Monomial.equal m) monos_in_templ then
-               None
-             else
-               Some c)
-        |> List.reduce_options
-  in
-  let zeros = zeros @ loose_coeffs @ sync_coeffs @ unuse_coeffs in
-  let ip = Formula.(gt ip Poly.zero) in
-  [{ psds; zeros; ip }]
+  List.map
+    (fun (psds, zeros, ip) -> {psds = psds; zeros = (zeros @ (loose_coeffs ip)); ip = Formula.(gt ip Poly.zero)})
+    sdps
