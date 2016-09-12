@@ -38,7 +38,7 @@ let ip_candidate sys1 sys2 vars degree =
   let ip1 = Formula.Poly.Op.(f1 + h1 + g1) in
   let cert2 = Formula.Poly.Op.(f1 + f2 + h1 + h2 + g2) in
   let zeros2 = List.map snd (Formula.Poly.to_list cert2) in
-  let ip2 = Formula.Poly.Op.(f2 + h2 + g2) in
+  let ip2 = Formula.Poly.Op.(- f2 - h2 - g2) in
   [(psdsf1 @ psdsf2 @ psdsg1 @ psdsh1 @ psdsh2, zero1 :: zeros1, ip1, true); (psdsf1 @ psdsf2 @ psdsg2 @ psdsh1 @ psdsh2, zero2 :: zeros2, ip2, false)]
 
 type sdp = {
@@ -88,7 +88,7 @@ let ip f1 f2 template degree =
     |> List.reduce_options
   in
   let return_sdp (psds, zeros, ip, strict) =
-    {psds = psds; zeros = (zeros @ (loose_coeffs ip)); ip = if strict then Formula.(gt ip Poly.zero) else Formula.(ge ip Poly.zero)}
+    {psds = psds; zeros = (zeros @ (loose_coeffs ip)); ip = if strict then Formula.(gt ip Poly.zero) else Formula.(le ip Poly.zero)}
   in
   let rec return_sdpl sdplist =
     match sdplist with
