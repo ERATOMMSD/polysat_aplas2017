@@ -38,7 +38,7 @@ let ip_candidate sys1 sys2 vars degree =
   let ip1 = Formula.Poly.Op.(f1 + h1 + g1) in
   let cert2 = Formula.Poly.Op.(f1 + f2 + h1 + h2 + g2) in
   let zeros2 = List.map snd (Formula.Poly.to_list cert2) in
-  let ip2 = Formula.Poly.Op.(- f2 - h2 - g2) in
+  let ip2 = Formula.Poly.Op.(f2 + h2 + g2) in
   [(psdsf1 @ psdsf2 @ psdsg1 @ psdsh1 @ psdsh2, zero1 :: zeros1, ip1, true); (psdsf1 @ psdsf2 @ psdsg2 @ psdsh1 @ psdsh2, zero2 :: zeros2, ip2, false)]
 
 type sdp = {
