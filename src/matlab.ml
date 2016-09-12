@@ -1,12 +1,18 @@
 open Format
 
+let pp_and fmt () =
+  fprintf fmt "ip = [ip ' && '];@\n"
+
+let pp_or fmt () =
+  fprintf fmt "ip = [ip ' || '];@\n"
+
 let pp_ineqs eq fmt ps =
   fprintf fmt "%a"
-    (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt "disp('&&');@\n")
+    (pp_print_list ~pp_sep:pp_and
        (fun fmt p ->
           fprintf fmt "@[<h>p = %a;@]@\n" Formula.Poly.pp p;
-          fprintf fmt "sdisplay(p);@\n";
-          fprintf fmt "disp('%s 0');@\n" eq))
+          fprintf fmt "s = sdisplay(p);@\n";
+          fprintf fmt "ip = [ip s{1,1} ' %s 0'];@\n" eq))
     ps
 
 
@@ -16,7 +22,7 @@ let pp_conj fmt { Formula.eqzs; Formula.gtzs; Formula.gezs } =
   let pp_gezs () = pp_ineqs ">=" fmt gezs in
   match List.(length eqzs, length gtzs, length gezs) with
   | 0, 0, 0 ->
-      fprintf fmt "disp('True');@\n"
+      fprintf fmt "ip = [ip 'True'];@\n"
   | _, 0, 0 ->
       pp_eqzs ()
   | 0, _, 0 ->
@@ -25,96 +31,93 @@ let pp_conj fmt { Formula.eqzs; Formula.gtzs; Formula.gezs } =
       pp_gezs ()
   | _, _, 0 ->
       pp_eqzs ();
-      fprintf fmt "disp('&&');@\n";
+      pp_and fmt ();
       pp_gtzs ()
   | 0, _, _ ->
       pp_gtzs ();
-      fprintf fmt "disp('&&');@\n";
+      pp_and fmt ();
       pp_gezs ()
   | _, 0, _ ->
       pp_eqzs ();
-      fprintf fmt "disp('&&');@\n";
+      pp_and fmt ();
       pp_gezs ()
   | _, _, _ ->
       pp_eqzs ();
-      fprintf fmt "disp('&&');@\n";
+      pp_and fmt ();
       pp_gtzs ();
-      fprintf fmt "disp('&&');@\n";
+      pp_and fmt ();
       pp_gezs ()
 
 
 let pp_formula fmt f =
   let dnf = Formula.to_dnf f in
   if List.length dnf = 0 then
-    fprintf fmt "disp('False');"
+    fprintf fmt "ip = 'False';"
   else
-    fprintf fmt "%a"
-      (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt "disp('||');@\n") pp_conj)
-      dnf
+    pp_print_list ~pp_sep:pp_or pp_conj fmt dnf
 
 
-let pp_sdp { Constraint.psds; Constraint.zeros; Constraint.ip } =
+let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
   let syms =
     List.map Formula.Poly.Matrix.to_list_list psds
     |> List.concat |> List.concat
   in
-  printf "@[<h>sdpvar %a;@]@\n"
+  fprintf fmt "@[<h>sdpvar %a;@]@\n"
     (pp_print_list ~pp_sep:(fun fmt () -> Format.fprintf fmt " ") Formula.Poly.pp)
     syms;
-  print_newline ();
+  pp_force_newline fmt ();
 
   let vars = Formula.vars ip |> Formula.Poly.VarSet.elements in
-  printf "@[<h>sdpvar %a;@]@\n"
+  fprintf fmt "@[<h>sdpvar %a;@]@\n"
     (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt " ") pp_print_string)
     vars;
-  print_newline ();
+  pp_force_newline fmt ();
 
   let l = Util.List.count 0 (List.length psds) in
-  printf "@[<v>%a@]@\n"
+  fprintf fmt "@[<v>%a@]@\n"
     (pp_print_list
       (fun fmt (i, m) -> fprintf fmt "@[<h>Q%d = %a;@]" i Formula.Poly.Matrix.pp m))
     (List.combine l psds);
-  print_newline ();
+  pp_force_newline fmt ();
 
-  printf "F = [@[%a;@\n"
+  fprintf fmt "F = [@[%a;@\n"
     (pp_print_list ~pp_sep:(fun fmt () -> Format.fprintf fmt "; ")
        (fun fmt d -> fprintf fmt "Q%d >= 0" d))
     l;
-  printf "@[<v>%a@]@]];@\n"
+  fprintf fmt "@[<v>%a@]@]];@\n"
     (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt ";@,")
        (fun fmt c -> fprintf fmt "@[<h>%a == 0@]" Formula.PPoly.pp c))
     zeros;
-  print_newline ();
+  pp_force_newline fmt ();
 
-  (* printf "@[<h>ip = %a;@]@\n" Formula.Poly.pp ip; *)
-  (* printf "obj = norm(coefficients(ip, [%a]), 1);@\n" *)
+  (* fprintf fmt "@[<h>ip = %a;@]@\n" Formula.Poly.pp ip; *)
+  (* fprintf fmt "obj = norm(coefficients(ip, [%a]), 1);@\n" *)
   (*   (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt " ") pp_print_string) *)
   (*   vars; *)
-  (* print_newline (); *)
+  (* pp_force_newline fmt (); *)
 
-  printf "ret = optimize(F, 1);@\n";
-  print_newline ();
+  fprintf fmt "ret = optimize(F, 1);@\n";
+  pp_force_newline fmt ();
 
-  printf "if ret.problem == 0@\n";
-  printf "  @[<v>%a@]@\n"
+  fprintf fmt "if ret.problem == 0@\n";
+  fprintf fmt "  @[<v>%a@]@\n"
     (pp_print_list
        (fun fmt a -> fprintf fmt "@[<h>%a = value(%a);@]" Formula.Poly.pp a Formula.Poly.pp a))
     syms;
-  print_newline ();
+  pp_force_newline fmt ();
 
-  printf "  disp('interpolant :=');@\n";
-  printf "  @[%a@]" pp_formula ip;
-  print_newline ();
-  printf "  exit(0);@\n";
+  fprintf fmt "  ip = '';@\n";
+  fprintf fmt "  @[%a@]" pp_formula ip;
+  fprintf fmt "  fprintf('interpolant := %%s\\n', ip);@\n";
+  fprintf fmt "  return;@\n";
 
-  printf "elseif ret.problem == 1@\n";
-  printf "  disp('Infeasible');@\n";
-  printf "else@\n";
-  printf "  disp('Something else happened')@\n";
-  printf "end@\n"
+  fprintf fmt "elseif ret.problem == 1@\n";
+  fprintf fmt "  disp('Infeasible');@\n";
+  fprintf fmt "else@\n";
+  fprintf fmt "  disp('Something else happened')@\n";
+  fprintf fmt "end@\n"
 
 
 let print_code sdps =
-  List.iter pp_sdp sdps;
-  print_newline ();
-  printf "exit(1);@\n"
+  printf "  @[<v>%a@]" (pp_print_list pp_sdp) sdps;
+  printf "  return;@\n"
