@@ -94,7 +94,7 @@ module Poly = struct
         let psd, nonnegative_coeff = sos P.Monomial.VarSet.empty 0 in
         (psd :: psds, Op.(strict_cone + nonnegative_coeff * comb), PPoly.Op.(to_const nonnegative_coeff + sum_of_coefficients_minus_1)))
       ([], zero, PPoly.P.(neg one)) combs
-      
+
   let gen_ideal tl vars d =
     List.fold_left
       (fun (psds, ideal) t ->

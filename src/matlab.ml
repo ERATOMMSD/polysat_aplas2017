@@ -1,6 +1,7 @@
 open Format
 
-let print_code psds zeros ip cert =
+let print_code sdps =
+  let { Constraint.psds; Constraint.zeros; Constraint.ip } = List.hd sdps in
   let syms =
     List.map Formula.Poly.Matrix.to_list_list psds
     |> List.concat |> List.concat
@@ -10,11 +11,11 @@ let print_code psds zeros ip cert =
     syms;
   print_newline ();
 
-  let vars = Formula.Poly.vars cert |> Formula.Poly.VarSet.elements in
-  printf "@[<h>sdpvar %a;@]@\n"
-    (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt " ") pp_print_string)
-    vars;
-  print_newline ();
+  (* let vars = Formula.Poly.vars cert |> Formula.Poly.VarSet.elements in *)
+  (* printf "@[<h>sdpvar %a;@]@\n" *)
+  (*   (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt " ") pp_print_string) *)
+  (*   vars; *)
+  (* print_newline (); *)
 
   let l = Util.List.count 0 (List.length psds) in
   printf "@[<v>%a@]@\n"
@@ -33,13 +34,13 @@ let print_code psds zeros ip cert =
     zeros;
   print_newline ();
 
-  printf "@[<h>ip = %a;@]@\n" Formula.Poly.pp ip;
-  printf "obj = norm(coefficients(ip, [%a]), 1);@\n"
-    (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt " ") pp_print_string)
-    vars;
-  print_newline ();
+  (* printf "@[<h>ip = %a;@]@\n" Formula.Poly.pp ip; *)
+  (* printf "obj = norm(coefficients(ip, [%a]), 1);@\n" *)
+  (*   (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt " ") pp_print_string) *)
+  (*   vars; *)
+  (* print_newline (); *)
 
-  printf "optimize(F, obj);@\n";
+  printf "optimize(F, 1);@\n";
   print_newline ();
 
   printf "@[<v>%a@]@\n"
@@ -48,6 +49,5 @@ let print_code psds zeros ip cert =
     syms;
   print_newline ();
 
-  printf "@[<h>ip = %a;@]@\n" Formula.Poly.pp ip;
-  printf "@[<h>cert = %a;@]@\n" Formula.Poly.pp cert;
+  (* printf "@[<h>ip = %a;@]@\n" Formula.Poly.pp ip; *)
   printf "sdisplay(ip);\n"

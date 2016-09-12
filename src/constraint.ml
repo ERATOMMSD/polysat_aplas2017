@@ -31,12 +31,17 @@ let ip_candidate sys1 sys2 vars degree =
   let psdsf2, f2 = Formula.Poly.gen_cone (sys2.Formula.gezs @ sys2.Formula.gtzs) vars degree in
   let psdsg, g, zero = Formula.Poly.gen_strict_cone sys1.Formula.gtzs degree in
   let psdsh1, h1 = Formula.Poly.gen_ideal sys1.Formula.eqzs vars degree in
-  let psdsh2, h2 = Formula.Poly.gen_ideal sys2.Formula.eqzs vars degree 
-  in
+  let psdsh2, h2 = Formula.Poly.gen_ideal sys2.Formula.eqzs vars degree in
   let cert = Formula.Poly.Op.(f1 + f2 + h1 + h2 + g) in
   let zeros = List.map snd (Formula.Poly.to_list cert) in
   let ip = Formula.Poly.Op.(f1 + h1 + g) in
-  (psdsf1 @ psdsf2 @ psdsg @ psdsh1 @ psdsh2, zero :: zeros, ip, cert)
+  (psdsf1 @ psdsf2 @ psdsg @ psdsh1 @ psdsh2, zero :: zeros, ip)
+
+type sdp = {
+  psds : Formula.Poly.Matrix.t list;
+  zeros : Formula.PPoly.t list;
+  ip : Formula.t;
+}
 
 (** [ip f1 f2 template degree] generates an interpolant candidate with the same
     shape of the given interpolant [template] between two formula [f1] and [f2].
@@ -45,13 +50,13 @@ let ip f1 f2 template degree =
   let vars1 = Formula.vars f1 in
   let vars2 = Formula.vars f2 in
   let vars = Formula.Poly.VarSet.union vars1 vars2 in
-  let psds, zeros, ips, certs =
+  let psds, zeros, ips =
     List.tupling (Formula.to_dnf f1) (Formula.to_dnf f2)
     |> List.map (fun (sys1, sys2) -> ip_candidate sys1 sys2 vars degree)
     |> List.fold_left
-      (fun (psds, zeros, ips, certs) (psds', zeros', ip, cert) ->
-         (psds' @ psds, zeros' @ zeros, ip :: ips, cert :: certs))
-      ([], [], [], [])
+      (fun (psds, zeros, ips) (psds', zeros', ip) ->
+         (psds' @ psds, zeros' @ zeros, ip :: ips))
+      ([], [], [])
   in
   (* interpolant should have only shared variables between f1 f2 *)
   let common_vars = Formula.Poly.VarSet.inter vars1 vars2 in
@@ -91,4 +96,6 @@ let ip f1 f2 template degree =
                Some c)
         |> List.reduce_options
   in
-  (psds, zeros @ loose_coeffs @ sync_coeffs @ unuse_coeffs, ip, certs)
+  let zeros = zeros @ loose_coeffs @ sync_coeffs @ unuse_coeffs in
+  let ip = Formula.(gt ip Poly.zero) in
+  [{ psds; zeros; ip }]

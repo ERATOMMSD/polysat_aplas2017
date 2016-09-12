@@ -24,7 +24,7 @@ module Poly: sig
   val gen_cone: t list -> VarSet.t -> int -> Matrix.t list * t
 
   val gen_strict_cone: t list -> int -> Matrix.t list * t * PPoly.t
-                                                               
+
   val gen_ideal: t list -> VarSet.t -> int -> Matrix.t list * t
 end
 
