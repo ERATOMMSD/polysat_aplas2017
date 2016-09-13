@@ -114,7 +114,7 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
   fprintf fmt "elseif ret.problem == 1@\n";
   fprintf fmt "  disp('Infeasible');@\n";
   fprintf fmt "else@\n";
-  fprintf fmt "  disp('Something else happened')@\n";
+  fprintf fmt "  disp(yalmiperror(ret.problem))@\n";
   fprintf fmt "end@\n"
 
 
