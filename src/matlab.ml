@@ -119,7 +119,7 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
   fprintf fmt "end@\n";
 
   fprintf fmt "%% Test: variables are %a @\n"
-    (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt ", ")  Formula.Poly.pp) (List.reduce_dep syms)
+    (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt ", ")  Formula.Poly.pp) (List.reduce_dup syms)
 
 
 let print_code sdps =

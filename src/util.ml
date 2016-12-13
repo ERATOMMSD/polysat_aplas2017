@@ -45,7 +45,7 @@ module List = struct
     | None :: xs -> reduce_options xs
     | Some x :: xs -> x :: reduce_options xs
                                           
-  let rec reduce_dep l =
+  let rec reduce_dup l =
     List.fold_left
       (fun acc x -> if (exists ((==) x) acc)
                     then acc
