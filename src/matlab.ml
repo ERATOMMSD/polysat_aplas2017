@@ -1,5 +1,6 @@
 open Format
-
+open Util
+       
 let pp_and fmt () =
   fprintf fmt "ip = [ip ' && '];@\n"
 
@@ -115,7 +116,10 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
   fprintf fmt "  disp('Infeasible');@\n";
   fprintf fmt "else@\n";
   fprintf fmt "  disp(yalmiperror(ret.problem))@\n";
-  fprintf fmt "end@\n"
+  fprintf fmt "end@\n";
+
+  fprintf fmt "%% Test: variables are %a @\n"
+    (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt ", ")  Formula.Poly.pp) (List.reduce_dep syms)
 
 
 let print_code sdps =
