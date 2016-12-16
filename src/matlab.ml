@@ -75,10 +75,12 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
   pp_force_newline fmt ();
 
   let l = Util.List.count 0 (List.length psds) in
-  fprintf fmt "@[<v>%a@]@\n"
-    (pp_print_list
-      (fun fmt (i, m) -> fprintf fmt "@[<h>Q%d = %a;@]" i Formula.Poly.Matrix.pp m))
-    (List.combine l psds);
+  let assign_Q = (fun () ->
+    fprintf fmt "@[<v>%a@]@\n"
+            (pp_print_list
+               (fun fmt (i, m) -> fprintf fmt "@[<h>Q%d = %a;@]" i Formula.Poly.Matrix.pp m))
+            (List.combine l psds);) in
+  assign_Q ();
   pp_force_newline fmt ();
 
   fprintf fmt "F = [@[%a;@\n"
@@ -91,6 +93,9 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
     zeros;
   pp_force_newline fmt ();
 
+  let syms_simp = List.reduce_dup syms
+  in
+  
   (* fprintf fmt "@[<h>ip = %a;@]@\n" Formula.Poly.pp ip; *)
   (* fprintf fmt "obj = norm(coefficients(ip, [%a]), 1);@\n" *)
   (*   (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt " ") pp_print_string) *)
@@ -98,6 +103,8 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
   (* pp_force_newline fmt (); *)
 
   fprintf fmt "ret = optimize(F, 1);@\n";
+  fprintf fmt "sol = containers.Map;@\n";
+  ignore (List.map (fun a -> fprintf fmt "sol('%a') = %a;@\n" Formula.Poly.pp a Formula.Poly.pp a) syms_simp);
   pp_force_newline fmt ();
 
   fprintf fmt "if ret.problem == 0@\n";
@@ -107,9 +114,6 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
     syms;
   pp_force_newline fmt ();
 
-  let syms_simp = List.reduce_dup syms
-  in
-  
   fprintf fmt "%% Test: variables are %a @\n"
     (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt ", ")  Formula.Poly.pp) (syms_simp);
 
@@ -122,9 +126,34 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
 
   pp_force_newline fmt ();
 
+  fprintf fmt "valid = true;@\n";
+  fprintf fmt "fprintf('Checking semidefiniteness...\\n');@\n";
+  assign_Q ();
+  fprintf fmt "valid = valid & %a;@\n" (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt " & ") (fun fmt i -> fprintf fmt "check_psd(Q%i)" i)) (List.count 0 (List.length psds));
+  
+  pp_force_newline fmt ();
+  fprintf fmt "fprintf('Checking strictcone condition...\\n');@\n";  
+  fprintf fmt "@[<h>['1 + @[%a@] = ' sdisplay(1 + @[%a@])]@]@\n" Formula.PPoly.pp (List.hd zeros) Formula.PPoly.pp (List.hd zeros);
+  fprintf fmt "@[<h>valid = valid & (1 + @[%a@] > 0);@]@\n" Formula.PPoly.pp (List.hd zeros);
+
+  pp_force_newline fmt ();
+  fprintf fmt "fprintf('Checking equality...\\n');@\n";
+  ignore (List.map (fun p ->
+      fprintf fmt "@[<h>['%a = ' sdisplay(%a)]@]@\n" Formula.PPoly.pp p  Formula.PPoly.pp p;
+      fprintf fmt "@[<h>valid = valid & (@[%a@] == 0);@]@\n"  Formula.PPoly.pp p;
+    ) (List.tl zeros));
+  
+
+  pp_force_newline fmt ();  
+
   fprintf fmt "  ip = '';@\n";
   fprintf fmt "  @[%a@]" pp_formula ip;
   fprintf fmt "  fprintf('interpolant := %%s\\n', ip);@\n";
+  fprintf fmt "if valid@\n";
+  fprintf fmt "  fprintf('This interpolant is valid.\\n');@\n";
+  fprintf fmt "else@\n";
+  fprintf fmt "  fprintf('This interpolant is invalid.\\n');@\n";
+  fprintf fmt "end@\n";
   fprintf fmt "  return;@\n";
 
   fprintf fmt "elseif ret.problem == 1@\n";
