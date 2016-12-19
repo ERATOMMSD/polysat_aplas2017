@@ -102,7 +102,8 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
   (*   vars; *)
   (* pp_force_newline fmt (); *)
 
-  fprintf fmt "ret = optimize(F, 1);@\n";
+  (* fprintf fmt "ret = optimize(F, %a);@\n" (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt " + ") (fun fmt a -> fprintf fmt "%a" Formula.Poly.pp a)) syms_simp; *)
+  fprintf fmt "ret = optmize(F);@\n";
   fprintf fmt "sol = containers.Map;@\n";
   ignore (List.map (fun a -> fprintf fmt "sol('%a') = %a;@\n" Formula.Poly.pp a Formula.Poly.pp a) syms_simp);
   pp_force_newline fmt ();
@@ -129,7 +130,7 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
   fprintf fmt "valid = true;@\n";
   fprintf fmt "fprintf('Checking semidefiniteness...\\n');@\n";
   assign_Q ();
-  fprintf fmt "valid = valid & %a;@\n" (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt " & ") (fun fmt i -> fprintf fmt "check_psd(Q%i)" i)) (List.count 0 (List.length psds));
+  fprintf fmt "@[<h>valid = valid & %a;@]@\n" (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt " & ") (fun fmt i -> fprintf fmt "check_psd(Q%i)" i)) (List.count 0 (List.length psds));
   
   pp_force_newline fmt ();
   fprintf fmt "fprintf('Checking strictcone condition...\\n');@\n";  
@@ -140,7 +141,7 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
   fprintf fmt "fprintf('Checking equality...\\n');@\n";
   ignore (List.map (fun p ->
       fprintf fmt "@[<h>['%a = ' sdisplay(%a)]@]@\n" Formula.PPoly.pp p  Formula.PPoly.pp p;
-      fprintf fmt "@[<h>valid = valid & (@[%a@] == 0);@]@\n"  Formula.PPoly.pp p;
+      fprintf fmt "@[<h>valid = valid & (@[<h>%a@] == 0);@]@\n"  Formula.PPoly.pp p;
     ) (List.tl zeros));
   
 
