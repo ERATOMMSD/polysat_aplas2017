@@ -116,9 +116,16 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
   pp_force_newline fmt ();
 
   fprintf fmt "%% Test: variables are %a @\n"
-    (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt ", ")  Formula.Poly.pp) (syms_simp);
+          (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt ", ")  Formula.Poly.pp) (syms_simp);
 
-  (* fprintf fmt "[%a] = approximate([%a], 0.001)@\n" (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt ", ")  Formula.Poly.pp) syms_simp (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt ", ")  Formula.Poly.pp) syms_simp;  *)
+  (* Making linear constraints *)
+  fprintf fmt "A = zeros(%i, %i);@\n" (List.length zeros - 1) (List.length syms_simp);
+  for i = 0 to (List.length zeros - 1) do
+    let lc = Formula.PPoly.to_list (List.nth zeros i) in
+    pp_print_list (fun fmt (a,b) -> fprintf fmt "(%a, %s)" Formula.PPoly.Monomial.pp a (Num.string_of_num b)) fmt lc;
+  done;
+  
+
   fprintf fmt "A = approximate([%a], 0.01)@\n" (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt ", ")  Formula.Poly.pp) syms_simp ;
   for i = 0 to (List.length(syms_simp) - 1) do
     fprintf fmt "%a = A(%i);@\n" Formula.Poly.pp (List.nth syms_simp i) (i + 1)
