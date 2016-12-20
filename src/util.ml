@@ -51,5 +51,13 @@ module List = struct
                     then acc
                     else x::acc)
       [] l
+  let rec find_index f l =
+    let rec helper i l = match l with
+        [] -> -1
+      | x::xs -> if f x then
+                   i
+                 else
+                   helper (i + 1) xs
+    in helper 0 l
 
 end

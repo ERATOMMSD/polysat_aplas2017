@@ -120,9 +120,27 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
 
   (* Making linear constraints *)
   fprintf fmt "A = zeros(%i, %i);@\n" (List.length zeros - 1) (List.length syms_simp);
-  for i = 0 to (List.length zeros - 1) do
-    let lc = Formula.PPoly.to_list (List.nth zeros i) in
-    pp_print_list (fun fmt (a,b) -> fprintf fmt "(%a, %s)" Formula.PPoly.Monomial.pp a (Num.string_of_num b)) fmt lc;
+  (* for i = 0 to (List.length zeros - 1) do *)
+  (*   let lc = Formula.PPoly.to_list (List.nth (List.tl zeros) i) in *)
+  (*   let lc2 = Formula.Poly.to_const (List.hd syms_simp) in *)
+  (*   let (h1,_) = List.hd lc in *)
+  (*   let (h2,_) = List.hd (Formula.PPoly.to_list lc2) in *)
+  (*   let yes = Formula.PPoly.Monomial.compare (h1) h2 in *)
+  (*   pp_print_list (fun fmt (a,b) -> fprintf fmt "(%a, %s)" Formula.PPoly.Monomial.pp a (Num.string_of_num b)) fmt lc; *)
+  (* done; *)
+  for i = 0 to (List.length (List.tl zeros) - 1) do
+    let sym_to_mon = (fun elt ->
+        let (h,_) = List.hd (Formula.PPoly.to_list (Formula.Poly.to_const elt))
+        in h)
+    in
+    let syms_simp_m = List.map sym_to_mon syms_simp in
+    (* linear constraints *)
+    let lc = Formula.PPoly.to_list (List.nth (List.tl zeros) i) in
+    pp_print_list
+      (fun fmt (t, c) ->
+        fprintf fmt "@[<h>A(%i, %i) = %s;@]"
+                (i+1) (List.find_index ((==) t) syms_simp_m) (Num.string_of_num c)) fmt lc;
+    pp_force_newline fmt ();
   done;
   
 
