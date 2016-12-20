@@ -120,14 +120,6 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
 
   (* Making linear constraints *)
   fprintf fmt "A = zeros(%i, %i);@\n" (List.length zeros - 1) (List.length syms_simp);
-  (* for i = 0 to (List.length zeros - 1) do *)
-  (*   let lc = Formula.PPoly.to_list (List.nth (List.tl zeros) i) in *)
-  (*   let lc2 = Formula.Poly.to_const (List.hd syms_simp) in *)
-  (*   let (h1,_) = List.hd lc in *)
-  (*   let (h2,_) = List.hd (Formula.PPoly.to_list lc2) in *)
-  (*   let yes = Formula.PPoly.Monomial.compare (h1) h2 in *)
-  (*   pp_print_list (fun fmt (a,b) -> fprintf fmt "(%a, %s)" Formula.PPoly.Monomial.pp a (Num.string_of_num b)) fmt lc; *)
-  (* done; *)
   for i = 0 to (List.length (List.tl zeros) - 1) do
     let sym_to_mon = (fun elt ->
         let (h,_) = List.hd (Formula.PPoly.to_list (Formula.Poly.to_const elt))
@@ -142,11 +134,16 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
                 (i+1) (List.find_index ((==) t) syms_simp_m) (Num.string_of_num c)) fmt lc;
     pp_force_newline fmt ();
   done;
-  
-
-  fprintf fmt "A = approximate([%a], 0.01)@\n" (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt ", ")  Formula.Poly.pp) syms_simp ;
+  fprintf fmt "@[<h>[B,U,V,Uinv,Vinv] = mysmith(A)@];@\n";
+  fprintf fmt "r = rank(B);@\n";
+  fprintf fmt "@[original = %a@];\n" (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt "; ")  Formula.Poly.pp) syms_simp ;
+  fprintf fmt "@[fitted = Vinv*original@];@\n";
+  fprintf fmt "@[ess = fitted(1, r+1:length(fitted))@];@\n";
+  fprintf fmt "@[ess = approximate(ess, 0.01);@];@\n";
+  fprintf fmt "@[fitted = vertcat(zeros(1, r), ess);@]@\n";
+  fprintf fmt "@[app = V*fitted;@]@\n";
   for i = 0 to (List.length(syms_simp) - 1) do
-    fprintf fmt "%a = A(%i);@\n" Formula.Poly.pp (List.nth syms_simp i) (i + 1)
+    fprintf fmt "%a = app(1, %i);@\n" Formula.Poly.pp (List.nth syms_simp i) (i + 1)
   done;
 
 
