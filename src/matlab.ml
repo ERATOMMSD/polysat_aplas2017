@@ -103,7 +103,7 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
   (* pp_force_newline fmt (); *)
 
   (* fprintf fmt "ret = optimize(F, %a);@\n" (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt " + ") (fun fmt a -> fprintf fmt "%a" Formula.Poly.pp a)) syms_simp; *)
-  fprintf fmt "ret = optmize(F);@\n";
+  fprintf fmt "ret = optimize(F);@\n";
   fprintf fmt "sol = containers.Map;@\n";
   ignore (List.map (fun a -> fprintf fmt "sol('%a') = %a;@\n" Formula.Poly.pp a Formula.Poly.pp a) syms_simp);
   pp_force_newline fmt ();
@@ -131,19 +131,20 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
     pp_print_list
       (fun fmt (t, c) ->
         fprintf fmt "@[<h>A(%i, %i) = %s;@]"
-                (i+1) (List.find_index ((==) t) syms_simp_m) (Num.string_of_num c)) fmt lc;
+                (i+1) (List.find_index ((==) t) syms_simp_m + 1) (Num.string_of_num c)) fmt lc;
     pp_force_newline fmt ();
   done;
   fprintf fmt "@[<h>[B,U,V,Uinv,Vinv] = mysmith(A)@];@\n";
   fprintf fmt "r = rank(B);@\n";
-  fprintf fmt "@[original = %a@];\n" (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt "; ")  Formula.Poly.pp) syms_simp ;
+  fprintf fmt "@[original = [%a]@];\n" (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt "; ")  Formula.Poly.pp) syms_simp ;
   fprintf fmt "@[fitted = Vinv*original@];@\n";
-  fprintf fmt "@[ess = fitted(1, r+1:length(fitted))@];@\n";
+  fprintf fmt "@[ess = fitted(r+1:length(fitted), 1)@];@\n";
   fprintf fmt "@[ess = approximate(ess, 0.01);@];@\n";
-  fprintf fmt "@[fitted = vertcat(zeros(1, r), ess);@]@\n";
+  fprintf fmt "@[ess = transpose(ess);@];@\n";  
+  fprintf fmt "@[fitted = vertcat(zeros(r, 1), ess);@]@\n";
   fprintf fmt "@[app = V*fitted;@]@\n";
   for i = 0 to (List.length(syms_simp) - 1) do
-    fprintf fmt "%a = app(1, %i);@\n" Formula.Poly.pp (List.nth syms_simp i) (i + 1)
+    fprintf fmt "%a = app(%i, 1);@\n" Formula.Poly.pp (List.nth syms_simp i) (i + 1)
   done;
 
 
