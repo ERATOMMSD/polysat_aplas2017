@@ -134,20 +134,30 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
                 (i+1) (List.find_index ((==) t) syms_simp_m + 1) (Num.string_of_num c)) fmt lc;
     pp_force_newline fmt ();
   done;
-  fprintf fmt "@[<h>[B,U,Uinv] = mygaussd(A)@];@\n";
-  fprintf fmt "@['Gauss'@];@\n";  
-  fprintf fmt "@[<h>B = sym(B)@];@\n";      
-  fprintf fmt "@[<h>U = sym(U)@];@\n";
-  fprintf fmt "r = rank(A);@\n";
+  fprintf fmt "@[<h>A=sym(A)@];@\n";
+  fprintf fmt "@[<h>[B,U,Uinv] = mygauss(A)@];@\n";
+  fprintf fmt "@['Gauss'@]@\n";  
+  (* fprintf fmt "@[<h>B = sym(B)@];@\n";       *)
+  (* fprintf fmt "@[<h>U = sym(U)@];@\n"; *)
+  (* fprintf fmt "r = rank(A);@\n"; *)
+  fprintf fmt "r = double(sum(sum(B*U)));@\n";
+  fprintf fmt "rank(A)@\n";
+  fprintf fmt "sum(sum(B*U))@\n";  
   fprintf fmt "@[original = [%a]@];\n" (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt "; ")  Formula.Poly.pp) syms_simp ;
   fprintf fmt "@[fitted = Uinv*original@];@\n";
   fprintf fmt "@[ess = fitted(r+1:length(fitted), 1)@];@\n";
-  fprintf fmt "@[ess = approximate(ess, 0.01);@];@\n";
-  fprintf fmt "@[ess = transpose(ess);@];@\n";  
+  (* fprintf fmt "@[ess = sym(ess)@];@\n";   *)
+  fprintf fmt "@[ess = double(ess);@];@\n";
+  fprintf fmt "@[ess = ess/max(abs(ess));@];@\n";
+  fprintf fmt "@[[ess1,ess2] = rat(ess)@];@\n";
+  fprintf fmt "@[ess = sym(ess1./ess2)@];@\n";
+  
+  (* fprintf fmt "@[ess = approximate(ess, 0.01);@];@\n"; *)
+  (* fprintf fmt "@[ess = transpose(ess);@];@\n";   *)
   fprintf fmt "@[fitted = vertcat(zeros(r, 1), ess);@]@\n";
   fprintf fmt "@[app = U*fitted;@]@\n";
-  fprintf fmt "@[app = app/mygcd(app);@]@\n";
-  fprintf fmt "@[app = double(app);@]@\n";    
+  (* fprintf fmt "@[app = app/mygcd(app);@]@\n"; *)
+  (* fprintf fmt "@[app = double(app);@]@\n";     *)
   for i = 0 to (List.length(syms_simp) - 1) do
     fprintf fmt "%a = app(%i, 1);@\n" Formula.Poly.pp (List.nth syms_simp i) (i + 1)
   done;
@@ -158,22 +168,38 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
   fprintf fmt "valid = true;@\n";
   fprintf fmt "fprintf('Checking semidefiniteness...\\n');@\n";
   assign_Q ();
-  fprintf fmt "@[<h>valid = valid & %a;@]@\n" (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt " & ") (fun fmt i -> fprintf fmt "check_psd(Q%i)" i)) (List.count 0 (List.length psds));
+  fprintf fmt "@[<h>valid = valid & %a;@]@\n" (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt " & ") (fun fmt i -> fprintf fmt "check_psd_sym(Q%i)" i)) (List.count 0 (List.length psds));
+  fprintf fmt "if valid == false@\n";
+  fprintf fmt "  pause;@\n";  
+  fprintf fmt "end@\n";
+  
   
   pp_force_newline fmt ();
-  fprintf fmt "fprintf('Checking strictcone condition...\\n');@\n";  
-  fprintf fmt "@[<h>['1 + %a = ' sdisplay(1 + %a)]@]@\n" Formula.PPoly.pp (List.hd zeros) Formula.PPoly.pp (List.hd zeros);
-  fprintf fmt "@[<h>valid = valid & (1 + %a > 0);@]@\n" Formula.PPoly.pp (List.hd zeros);
+  fprintf fmt "fprintf('Checking strictcone condition...\\n');@\n";
+  fprintf fmt "@[<h>['1 + %a = ' ]@]@\n" Formula.PPoly.pp (List.hd zeros);
+  (* fprintf fmt "@[<h>['1 + %a = ' sdisplay(1 + %a)]@]@\n" Formula.PPoly.pp (List.hd zeros) Formula.PPoly.pp (List.hd zeros); *)
+  fprintf fmt "@[<h>valid = valid & isAlways(1 + %a > 0);@]@\n" Formula.PPoly.pp (List.hd zeros);
+  fprintf fmt "if valid == false@\n";
+  fprintf fmt "  pause;@\n";  
+  fprintf fmt "end@\n";
 
   pp_force_newline fmt ();
   fprintf fmt "fprintf('Checking equality...\\n');@\n";
   ignore (List.map (fun p ->
-      fprintf fmt "@[<h>['%a = ' sdisplay(%a)]@]@\n" Formula.PPoly.pp p  Formula.PPoly.pp p;
-      fprintf fmt "@[<h>valid = valid & (@[<h>%a@] == 0);@]@\n"  Formula.PPoly.pp p;
+              (* fprintf fmt "@[<h>['%a = ' sdisplay(%a)]@]@\n" Formula.PPoly.pp p  Formula.PPoly.pp p; *)
+              fprintf fmt "@[<h>['%a = ' ]@]@\n" Formula.PPoly.pp p ;
+              fprintf fmt "@[<h>valid = valid & isAlways(@[<h>%a@] == 0);@]@\n"  Formula.PPoly.pp p;
+              fprintf fmt "if valid == false@\n";
+              fprintf fmt "  pause;@\n";
+              fprintf fmt "end@\n"                                            
     ) (List.tl zeros));
   
 
   pp_force_newline fmt ();  
+
+  (* for i = 0 to (List.length(syms_simp) - 1) do *)
+  (*   fprintf fmt "%a = double(%a);@\n" Formula.Poly.pp (List.nth syms_simp i) Formula.Poly.pp (List.nth syms_simp i); *)
+  (* done; *)
 
   fprintf fmt "  ip = '';@\n";
   fprintf fmt "  @[%a@]" pp_formula ip;
