@@ -135,22 +135,30 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
     pp_force_newline fmt ();
   done;
   fprintf fmt "@[<h>A=sym(A)@];@\n";
-  fprintf fmt "@[<h>[B,U,Uinv] = mygauss(A)@];@\n";
+  fprintf fmt "@[if easy_gauss@]\n";
+  fprintf fmt "@[  [B,U,Uinv] = mygaussd(A)@];@\n";
+  fprintf fmt "@[else@]@\n";  
+  fprintf fmt "@[  [B,U,Uinv] = mygauss(A)@];@\n";
+  fprintf fmt "@[end@]@\n";    
   fprintf fmt "@['Gauss'@]@\n";  
   (* fprintf fmt "@[<h>B = sym(B)@];@\n";       *)
   (* fprintf fmt "@[<h>U = sym(U)@];@\n"; *)
   (* fprintf fmt "r = rank(A);@\n"; *)
   fprintf fmt "r = double(sum(sum(B*U)));@\n";
-  fprintf fmt "rank(A)@\n";
-  fprintf fmt "sum(sum(B*U))@\n";  
   fprintf fmt "@[original = [%a]@];\n" (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt "; ")  Formula.Poly.pp) syms_simp ;
   fprintf fmt "@[fitted = Uinv*original@];@\n";
   fprintf fmt "@[ess = fitted(r+1:length(fitted), 1)@];@\n";
   (* fprintf fmt "@[ess = sym(ess)@];@\n";   *)
-  fprintf fmt "@[ess = double(ess);@];@\n";
-  fprintf fmt "@[ess = ess/max(abs(ess));@];@\n";
-  fprintf fmt "@[[ess1,ess2] = rat(ess)@];@\n";
-  fprintf fmt "@[ess = sym(ess1./ess2)@];@\n";
+  fprintf fmt "@[if do_approximate@];@\n";
+  fprintf fmt "  @[ess = double(ess);@];@\n";
+  fprintf fmt "  @[ess = approximate(ess, tolerance);@];@\n";
+  fprintf fmt "  @[ess = transpose(ess)@];@\n";    
+  fprintf fmt "@[else@];@\n";
+  fprintf fmt "  @[ess = double(ess);@];@\n";
+  fprintf fmt "  @[ess = ess/max(abs(ess));@];@\n";
+  fprintf fmt "  @[[ess1,ess2] = rat(ess)@];@\n";
+  fprintf fmt "  @[ess = sym(ess1./ess2)@];@\n";
+  fprintf fmt "@[end@];@\n";  
   
   (* fprintf fmt "@[ess = approximate(ess, 0.01);@];@\n"; *)
   (* fprintf fmt "@[ess = transpose(ess);@];@\n";   *)
@@ -217,8 +225,12 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
   fprintf fmt "  disp(yalmiperror(ret.problem))@\n";
   fprintf fmt "end@\n"
 
-
+let pp_header fmt () =
+  fprintf fmt "tolerance = 0.01;@\n";
+  fprintf fmt "do_approximate = false;@\n";
+  fprintf fmt "easy_gauss = false;@\n"                    
 
 let print_code sdps =
+  printf "  @[<v>%a@]" pp_header ();   
   printf "  @[<v>%a@]" (pp_print_list pp_sdp) sdps;
   printf "  return;@\n"
