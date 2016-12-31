@@ -139,11 +139,42 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
     pp_force_newline fmt ();
   done;
   fprintf fmt "@[<h>A=sym(A)@];@\n";
+  fprintf fmt "@[if skip_gauss@]\n"; (* if of skip_gauss *)
+  fprintf fmt "@[load('B_num.dat', '-ascii');@]\n";
+  fprintf fmt "@[load('B_den.dat', '-ascii');@]\n";
+  fprintf fmt "@[B_num = sym(B_num);@]\n";
+  fprintf fmt "@[B_den = sym(B_den);@]\n";
+  fprintf fmt "@[B = B_num./B_den;@]\n";
+  fprintf fmt "@[load('U_num.dat', '-ascii');@]\n";
+  fprintf fmt "@[load('U_den.dat', '-ascii');@]\n";
+  fprintf fmt "@[U_num = sym(U_num);@]\n";
+  fprintf fmt "@[U_den = sym(U_den);@]\n";
+  fprintf fmt "@[U = U_num./U_den;@]\n";        
+  fprintf fmt "@[Uinv_num = sym(Uinv_num);@]\n";
+  fprintf fmt "@[Uinv_den = sym(Uinv_den);@]\n";
+  fprintf fmt "@[Uinv = Uinv_num./Uinv_den;@]\n";          
+  fprintf fmt "@[else@]\n"; (* else of skip_gauss *)    
   fprintf fmt "@[if easy_gauss@]\n";
   fprintf fmt "@[  [B,U,Uinv] = mygaussd(A)@];@\n";
   fprintf fmt "@[else@]@\n";  
   fprintf fmt "@[  [B,U,Uinv] = mygauss(A)@];@\n";
-  fprintf fmt "@[end@]@\n";    
+  fprintf fmt "@[end@]@\n";
+  fprintf fmt "@[[B_num,B_den] = numden(B);@]\n";
+  fprintf fmt "@[B_num = double(B_num);@]\n";
+  fprintf fmt "@[B_den = double(B_den);@]\n";
+  fprintf fmt "@[save('B_num.dat', 'B_num', '-ascii');@]\n";
+  fprintf fmt "@[save('B_den.dat', 'B_den', '-ascii');@]\n";        
+  fprintf fmt "@[[U_num,U_den] = numden(U);@]\n";
+  fprintf fmt "@[U_num = double(U_num);@]\n";
+  fprintf fmt "@[U_den = double(U_den);@]\n";
+  fprintf fmt "@[save('U_num.dat', 'U_num', '-ascii');@]\n";
+  fprintf fmt "@[save('U_den.dat', 'U_den', '-ascii');@]\n";          
+  fprintf fmt "@[[Uinv_num,Uinv_den] = numden(Uinv);@]\n";
+  fprintf fmt "@[Uinv_num = double(Uinv_num);@]\n";
+  fprintf fmt "@[Uinv_den = double(Uinv_den);@]\n";
+  fprintf fmt "@[save('Uinv_num.dat', 'Uinv_num', '-ascii');@]\n";
+  fprintf fmt "@[save('Uinv_den.dat', 'Uinv_den', '-ascii');@]\n";            
+  fprintf fmt "@[end@]\n";  (* end of skip_gauss *)
   fprintf fmt "@['Gauss'@]@\n";  
   (* fprintf fmt "@[<h>B = sym(B)@];@\n";       *)
   (* fprintf fmt "@[<h>U = sym(U)@];@\n"; *)
@@ -237,7 +268,8 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
 let pp_header fmt () =
   fprintf fmt "tolerance = 0.01;@\n";
   fprintf fmt "do_approximate = false;@\n";
-  fprintf fmt "easy_gauss = false;@\n"                    
+  fprintf fmt "easy_gauss = false;@\n";
+  fprintf fmt "skip_gauss = false;@\n"                              
 
 let print_code sdps =
   printf "  @[<v>%a@]" pp_header ();   
