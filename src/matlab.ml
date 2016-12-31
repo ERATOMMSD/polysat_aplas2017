@@ -72,6 +72,10 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
   fprintf fmt "@[<h>sdpvar %a;@]@\n"
     (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt " ") pp_print_string)
     vars;
+  (* fpritnf fmt "@[vars_str@]@\n"; *)
+  (* for i = 0 to ((List.length vars) - 1) do *)
+  (*   fprintf fmt  *)
+  (* done; *)
   pp_force_newline fmt ();
 
   let l = Util.List.count 0 (List.length psds) in
@@ -211,6 +215,11 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
 
   fprintf fmt "  ip = '';@\n";
   fprintf fmt "  @[%a@]" pp_formula ip;
+  pp_print_list (fun fmt var ->
+      fprintf fmt "  ip = strrep(ip, strcat('x', int2str(depends(%a))), '%a');@\n" pp_print_string var pp_print_string var;)
+                fmt
+                (List.rev vars);
+  pp_force_newline fmt ();
   fprintf fmt "  fprintf('interpolant := %%s\\n', ip);@\n";
   fprintf fmt "if valid@\n";
   fprintf fmt "  fprintf('This interpolant is valid.\\n');@\n";
