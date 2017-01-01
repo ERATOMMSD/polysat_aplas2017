@@ -233,10 +233,12 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
   fprintf fmt "fprintf('Checking strictcone condition...\\n');@\n";
   fprintf fmt "@[<h>['1 + %a = ' ]@]@\n" Formula.PPoly.pp (List.hd zeros);
   (* fprintf fmt "@[<h>['1 + %a = ' sdisplay(1 + %a)]@]@\n" Formula.PPoly.pp (List.hd zeros) Formula.PPoly.pp (List.hd zeros); *)
+  fprintf fmt "if ignore_sc == false@\n";
   fprintf fmt "@[<h>valid = valid & isAlways(1 + %a > 0);@]@\n" Formula.PPoly.pp (List.hd zeros);
   fprintf fmt "if valid == false@\n";
   fprintf fmt "  pause;@\n";  
   fprintf fmt "end@\n";
+  fprintf fmt "end@\n";  
 
   pp_force_newline fmt ();
   fprintf fmt "fprintf('Checking equality...\\n');@\n";
@@ -282,7 +284,8 @@ let pp_header fmt () =
   fprintf fmt "do_approximate = false;@\n";
   (* fprintf fmt "easy_gauss = false;@\n"; *)
   fprintf fmt "simplify_method = '-smith'; %% -gauss, -smith, -easy_gauss@\n";
-  fprintf fmt "skip_gauss = false;@\n"
+  fprintf fmt "skip_gauss = false;@\n";
+  fprintf fmt "ignore_sc = false;@\n"
 
 let print_code sdps =
   printf "  @[<v>%a@]" pp_header ();   
