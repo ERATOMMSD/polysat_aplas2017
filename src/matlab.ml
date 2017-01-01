@@ -195,11 +195,16 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
   fprintf fmt "@[fitted = Uinv*original@];@\n";
   fprintf fmt "@[ess = fitted(r+1:length(fitted), 1)@];@\n";
   (* fprintf fmt "@[ess = sym(ess)@];@\n";   *)
-  fprintf fmt "@[ess = ess/max(abs(ess));@];@\n";    
+  (* fprintf fmt "@[ess = ess/max(abs(ess));@];@\n";     *)
   fprintf fmt "@[if do_approximate@];@\n";
-  fprintf fmt "  @[ess = double(ess);@];@\n";
-  fprintf fmt "  @[ess = approximate(ess, tolerance);@];@\n";
-  fprintf fmt "  @[ess = transpose(ess)@];@\n";    
+  (* fprintf fmt "  @[ess = double(ess);@];@\n"; *)
+  fprintf fmt "  m = max(abs(ess));@\n";
+  fprintf fmt "  for i=1:length(ess);@\n";
+  fprintf fmt "    if abs(ess(i)) < m/100000@\n";
+  fprintf fmt "      ess(i) = 0;@\n";  
+  fprintf fmt "    end@\n";    
+  fprintf fmt "  end;@\n";    
+  fprintf fmt "  @[ess = approximate2(ess, depth);@];@\n";
   fprintf fmt "@[else@];@\n";
   fprintf fmt "  @[ess = double(ess);@];@\n";
   fprintf fmt "  @[ess = ess/max(abs(ess));@];@\n";
@@ -281,11 +286,12 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
 
 let pp_header fmt () =
   fprintf fmt "tolerance = 0.01;@\n";
-  fprintf fmt "do_approximate = false;@\n";
+  fprintf fmt "do_approximate = true;@\n";
   (* fprintf fmt "easy_gauss = false;@\n"; *)
   fprintf fmt "simplify_method = '-smith'; %% -gauss, -smith, -easy_gauss@\n";
   fprintf fmt "skip_gauss = false;@\n";
-  fprintf fmt "ignore_sc = false;@\n"
+  fprintf fmt "ignore_sc = false;@\n";
+  fprintf fmt "depth = 3;@\n"          
 
 let print_code sdps =
   printf "  @[<v>%a@]" pp_header ();   
