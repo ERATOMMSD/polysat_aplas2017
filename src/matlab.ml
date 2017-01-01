@@ -107,6 +107,13 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
   (* pp_force_newline fmt (); *)
 
   (* fprintf fmt "ret = optimize(F, %a);@\n" (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt " + ") (fun fmt a -> fprintf fmt "%a" Formula.Poly.pp a)) syms_simp; *)
+  (* fprintf fmt "ret = optimize(F);@\n"; *)
+  (* let sum_trace fmt () = pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt " + ") *)
+  (*                                      (fun fmt a -> fprintf fmt "trace(Q%i)" a) *)
+  (*                                      fmt *)
+  (*                                      (List.count 0 (List.length psds)) *)
+  (* in *)
+  (* fprintf fmt "ret = optimize(F, %a);@\n" sum_trace (); *)
   fprintf fmt "ret = optimize(F);@\n";
   fprintf fmt "sol = containers.Map;@\n";
   ignore (List.map (fun a -> fprintf fmt "sol('%a') = %a;@\n" Formula.Poly.pp a Formula.Poly.pp a) syms_simp);
@@ -154,8 +161,12 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
   fprintf fmt "@[Uinv_den = sym(Uinv_den);@]\n";
   fprintf fmt "@[Uinv = Uinv_num./Uinv_den;@]\n";          
   fprintf fmt "@[else@]\n"; (* else of skip_gauss *)    
-  fprintf fmt "@[if easy_gauss@]\n";
+  fprintf fmt "@[if strcmp(simplify_method, '-easy_gauss')@]\n";
   fprintf fmt "@[  [B,U,Uinv] = mygaussd(A)@];@\n";
+  fprintf fmt "@[elseif strcmp(simplify_method, '-smith')@]@\n";
+  fprintf fmt "@[  [B,U,V,Uinv,Vinv] = mysmith(A)@];@\n";
+  fprintf fmt "@[  U = sym(V);@\n";
+  fprintf fmt "@[  Uinv = sym(Vinv);@\n";  
   fprintf fmt "@[else@]@\n";  
   fprintf fmt "@[  [B,U,Uinv] = mygauss(A)@];@\n";
   fprintf fmt "@[end@]@\n";
@@ -178,12 +189,13 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
   fprintf fmt "@['Gauss'@]@\n";  
   (* fprintf fmt "@[<h>B = sym(B)@];@\n";       *)
   (* fprintf fmt "@[<h>U = sym(U)@];@\n"; *)
-  (* fprintf fmt "r = rank(A);@\n"; *)
-  fprintf fmt "r = double(sum(sum(B*U)));@\n";
+  fprintf fmt "r = rank(A);@\n";
+  (* fprintf fmt "r = double(sum(sum(B*U)));@\n"; *)
   fprintf fmt "@[original = [%a]@];\n" (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt "; ")  Formula.Poly.pp) syms_simp ;
   fprintf fmt "@[fitted = Uinv*original@];@\n";
   fprintf fmt "@[ess = fitted(r+1:length(fitted), 1)@];@\n";
   (* fprintf fmt "@[ess = sym(ess)@];@\n";   *)
+  fprintf fmt "@[ess = ess/max(abs(ess));@];@\n";    
   fprintf fmt "@[if do_approximate@];@\n";
   fprintf fmt "  @[ess = double(ess);@];@\n";
   fprintf fmt "  @[ess = approximate(ess, tolerance);@];@\n";
@@ -268,8 +280,9 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
 let pp_header fmt () =
   fprintf fmt "tolerance = 0.01;@\n";
   fprintf fmt "do_approximate = false;@\n";
-  fprintf fmt "easy_gauss = false;@\n";
-  fprintf fmt "skip_gauss = false;@\n"                              
+  (* fprintf fmt "easy_gauss = false;@\n"; *)
+  fprintf fmt "simplify_method = '-smith'; %% -gauss, -smith, -easy_gauss@\n";
+  fprintf fmt "skip_gauss = false;@\n"
 
 let print_code sdps =
   printf "  @[<v>%a@]" pp_header ();   
