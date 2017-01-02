@@ -224,8 +224,6 @@ let vars t =
 
 let syms_ip t =
   let coeffs p =
-    (* let (_,c) = (List.hd (Poly.to_list p)) in *)
-    (* PPoly.vars c *)
     List.map (fun (_, c) -> c) (Poly.to_list p)
   in
   let coeff_vars l =

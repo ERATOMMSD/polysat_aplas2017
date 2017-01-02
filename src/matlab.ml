@@ -79,6 +79,13 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
   (* done; *)
   pp_force_newline fmt ();
 
+  let syms_ip = Formula.syms_ip ip in
+
+  let (zeros_nonlin, zeros_lin) =
+    List.partition
+      (fun t -> List.exists (fun (m,_) -> Formula.PPoly.Monomial.degree m == 0) (Formula.PPoly.to_list t)) zeros
+  in
+
   let l = Util.List.count 0 (List.length psds) in
   let assign_Q = (fun () ->
     fprintf fmt "@[<v>%a@]@\n"
@@ -92,10 +99,14 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
     (pp_print_list ~pp_sep:(fun fmt () -> Format.fprintf fmt "; ")
        (fun fmt d -> fprintf fmt "Q%d >= 0" d))
     l;
-  fprintf fmt "@[<v>%a@]@]];@\n"
+  fprintf fmt "@[<v>%a@]@];@\n"
     (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt ";@,")
        (fun fmt c -> fprintf fmt "@[<h>%a == 0@]" Formula.PPoly.pp c))
-    zeros;
+    zeros_lin;
+  fprintf fmt "@[<v>%a@]@]];@\n"
+    (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt ";@,")
+       (fun fmt c -> fprintf fmt "@[<h>%a >= 0@]" Formula.PPoly.pp c))
+    zeros_nonlin;
   pp_force_newline fmt ();
 
   let syms_simp = List.reduce_dup syms
@@ -131,15 +142,15 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
           (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt ", ")  Formula.Poly.pp) (syms_simp);
 
   (* Making linear constraints *)
-  fprintf fmt "A = zeros(%i, %i);@\n" (List.length zeros - 1) (List.length syms_simp);
-  for i = 0 to (List.length (List.tl zeros) - 1) do
+  fprintf fmt "A = zeros(%i, %i);@\n" (List.length zeros_lin) (List.length syms_simp);
+  for i = 0 to (List.length zeros_lin - 1) do
     let sym_to_mon = (fun elt ->
         let (h,_) = List.hd (Formula.PPoly.to_list (Formula.Poly.to_const elt))
         in h)
     in
     let syms_simp_m = List.map sym_to_mon syms_simp in
     (* linear constraints *)
-    let lc = Formula.PPoly.to_list (List.nth (List.tl zeros) i) in
+    let lc = Formula.PPoly.to_list (List.nth zeros_lin i) in
     pp_print_list
       (fun fmt (t, c) ->
         fprintf fmt "@[<h>A(%i, %i) = %s;@]"
@@ -200,12 +211,12 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
   fprintf fmt "@[if do_approximate@];@\n";
   (* fprintf fmt "  @[ess = double(ess);@];@\n"; *)
   fprintf fmt "  m = max(abs(ess));@\n";
-  fprintf fmt "  for i=1:length(ess);@\n";
-  fprintf fmt "    if abs(ess(i)) < m/100000@\n";
-  fprintf fmt "      ess(i) = 0;@\n";  
-  fprintf fmt "    end@\n";    
-  fprintf fmt "  end;@\n";    
-  fprintf fmt "  @[ess = approximate2(ess, depth);@];@\n";
+  (* fprintf fmt "  for i=1:length(ess);@\n"; *)
+  (* fprintf fmt "    if abs(ess(i)) < m/100000@\n"; *)
+  (* fprintf fmt "      ess(i) = 0;@\n";   *)
+  (* fprintf fmt "    end@\n";     *)
+  (* fprintf fmt "  end;@\n";     *)
+  fprintf fmt "  @[ess = approximate2(cut_epsilon(ess, 100000), depth);@];@\n";
   fprintf fmt "@[else@];@\n";
   fprintf fmt "  @[ess = double(ess);@];@\n";
   fprintf fmt "  @[ess = ess/max(abs(ess));@];@\n";
@@ -237,10 +248,11 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
   
   pp_force_newline fmt ();
   fprintf fmt "fprintf('Checking strictcone condition...\\n');@\n";
-  fprintf fmt "@[<h>['1 + %a = ' ]@]@\n" Formula.PPoly.pp (List.hd zeros);
+  pp_print_list (fun fmt -> fprintf fmt "@[<h>['1 + %a = ' ]@]@\n" Formula.PPoly.pp) fmt zeros_nonlin;
+
   (* fprintf fmt "@[<h>['1 + %a = ' sdisplay(1 + %a)]@]@\n" Formula.PPoly.pp (List.hd zeros) Formula.PPoly.pp (List.hd zeros); *)
   fprintf fmt "if ignore_sc == false@\n";
-  fprintf fmt "@[<h>valid = valid & isAlways(1 + %a > 0);@]@\n" Formula.PPoly.pp (List.hd zeros);
+  pp_print_list (fun fmt -> fprintf fmt "@[<h>valid = valid & isAlways(1 + %a > 0);@]@\n" Formula.PPoly.pp) fmt zeros_nonlin;  
   fprintf fmt "if valid == false@\n";
   fprintf fmt "  pause;@\n";  
   fprintf fmt "end@\n";
@@ -255,7 +267,7 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
               fprintf fmt "if valid == false@\n";
               fprintf fmt "  pause;@\n";
               fprintf fmt "end@\n"                                            
-    ) (List.tl zeros));
+    ) zeros_lin);
   
 
   pp_force_newline fmt ();  
@@ -264,11 +276,13 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
   (*   fprintf fmt "%a = double(%a);@\n" Formula.Poly.pp (List.nth syms_simp i) Formula.Poly.pp (List.nth syms_simp i); *)
   (* done; *)
 
-  let ip_vars = Formula.t.elements ip in
   
   fprintf fmt "  ip = '';@\n";
   fprintf fmt "  @[%a@]" pp_formula ip;
-  fprintf fmt "  %% Iptest: %a@\n" 
+  fprintf fmt "  %% Iptest: %a@\n" (pp_print_list ~pp_sep:(fun fmt () -> Format.fprintf fmt " ") (fun fmt -> Format.fprintf fmt "a%i")) (Formula.PPoly.VarSet.elements syms_ip);
+  fprintf fmt "  %% Iptest, iplen: %i@\n" (Formula.PPoly.VarSet.cardinal syms_ip);
+  fprintf fmt "  %% Iptest, varlen: %i@\n" (List.length syms_simp);
+  fprintf fmt "  x = [%a]@\n" (pp_print_list ~pp_sep:(fun fmt () -> Format.fprintf fmt " ") (fun fmt -> Format.fprintf fmt "sol('a%i')")) (Formula.PPoly.VarSet.elements syms_ip);  
   pp_print_list (fun fmt var ->
       fprintf fmt "  ip = strrep(ip, strcat('x', int2str(depends(%a))), '%a');@\n" pp_print_string var pp_print_string var;)
                 fmt
@@ -292,7 +306,7 @@ let pp_header fmt () =
   fprintf fmt "tolerance = 0.01;@\n";
   fprintf fmt "do_approximate = true;@\n";
   (* fprintf fmt "easy_gauss = false;@\n"; *)
-  fprintf fmt "simplify_method = '-smith'; %% -gauss, -smith, -easy_gauss@\n";
+  fprintf fmt "simplify_method = '-gauss'; %% -gauss, -smith, -easy_gauss@\n";
   fprintf fmt "skip_gauss = false;@\n";
   fprintf fmt "ignore_sc = false;@\n";
   fprintf fmt "depth = 3;@\n"          
