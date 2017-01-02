@@ -1,5 +1,6 @@
 open Format
 open Util
+open Formula
        
 let pp_and fmt () =
   fprintf fmt "ip = [ip ' && '];@\n"
@@ -263,8 +264,11 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
   (*   fprintf fmt "%a = double(%a);@\n" Formula.Poly.pp (List.nth syms_simp i) Formula.Poly.pp (List.nth syms_simp i); *)
   (* done; *)
 
+  let ip_vars = Formula.t.elements ip in
+  
   fprintf fmt "  ip = '';@\n";
   fprintf fmt "  @[%a@]" pp_formula ip;
+  fprintf fmt "  %% Iptest: %a@\n" 
   pp_print_list (fun fmt var ->
       fprintf fmt "  ip = strrep(ip, strcat('x', int2str(depends(%a))), '%a');@\n" pp_print_string var pp_print_string var;)
                 fmt

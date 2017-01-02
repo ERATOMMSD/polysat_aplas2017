@@ -221,6 +221,22 @@ let vars t =
        (fun (EqZ p | NeqZ p | GeZ p | GtZ p) vars -> Poly.VarSet.union vars (Poly.vars p)))
     t Poly.VarSet.empty
 
+
+let syms_ip t =
+  let coeffs p =
+    (* let (_,c) = (List.hd (Poly.to_list p)) in *)
+    (* PPoly.vars c *)
+    List.map (fun (_, c) -> c) (Poly.to_list p)
+  in
+  let coeff_vars l =
+    List.fold_left (fun v s -> PPoly.VarSet.union v s) PPoly.VarSet.empty (List.map PPoly.vars l)
+  in
+  DisjSet.fold
+    (ConjSet.fold
+       (fun (EqZ p | NeqZ p | GeZ p | GtZ p) vars -> PPoly.VarSet.union vars ((coeff_vars (coeffs p)))))
+    t PPoly.VarSet.empty
+
+    
 type conj = { eqzs: Poly.t list; gtzs: Poly.t list; gezs: Poly.t list }
 
 let to_dnf t =
