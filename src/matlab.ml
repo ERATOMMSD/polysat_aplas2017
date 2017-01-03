@@ -309,9 +309,88 @@ let pp_header fmt () =
   fprintf fmt "simplify_method = '-gauss'; %% -gauss, -smith, -easy_gauss@\n";
   fprintf fmt "skip_gauss = false;@\n";
   fprintf fmt "ignore_sc = false;@\n";
-  fprintf fmt "depth = 3;@\n"          
+  fprintf fmt "depth = 3;@\n"
+
+let pp_sdp2 fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
+  let syms =
+    List.map Formula.Poly.Matrix.to_list_list psds
+    |> List.concat |> List.concat
+  in
+  let vars = Formula.vars ip |> Formula.Poly.VarSet.elements in
+  let syms_ip = Formula.syms_ip ip in
+  let (zeros_nonlin, zeros_lin) =
+    List.partition
+      (fun t -> List.exists (fun (m,_) -> Formula.PPoly.Monomial.degree m == 0) (Formula.PPoly.to_list t)) zeros
+  in
+  let syms_simp = List.reduce_dup syms in
+
+  let pp_runsdp add_constr sc_cond =
+    fprintf fmt "@[<h>sdpvar %a;@]@\n"
+            (pp_print_list ~pp_sep:(fun fmt () -> Format.fprintf fmt " ") Formula.Poly.pp)
+            syms;
+    pp_force_newline fmt ();
+    fprintf fmt "@[<h>sdpvar %a;@]@\n"
+            (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt " ") pp_print_string)
+            vars;
+    pp_force_newline fmt ();
+    let l = Util.List.count 0 (List.length psds) in    
+    fprintf fmt "@[<v>%a@]@\n"
+            (pp_print_list
+               (fun fmt (i, m) -> fprintf fmt "@[<h>Q%d = %a;@]" i Formula.Poly.Matrix.pp m))
+            (List.combine l psds);
+    pp_force_newline fmt ();
+    fprintf fmt "F = [@[%a;@\n"
+            (pp_print_list ~pp_sep:(fun fmt () -> Format.fprintf fmt "; ")
+                           (fun fmt d -> fprintf fmt "Q%d >= 0" d))
+            l;
+    fprintf fmt "@[<v>%a@]@];@\n"
+            (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt ";@,")
+                           (fun fmt c -> fprintf fmt "@[<h>%a == 0@]" Formula.PPoly.pp c))
+            zeros_lin;
+    if sc_cond then
+      fprintf fmt "@[<v>%a@]@];@\n"
+              (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt ";@,")
+                        (fun fmt c -> fprintf fmt "@[<h>%a >= 0@]" Formula.PPoly.pp c))
+              zeros_nonlin;
+    fprintf fmt "@[<v>%a@]@]];@\n"
+            (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt ";@,")
+                           (fun fmt (c, d) -> fprintf fmt "@[<h>a%i == double(ips(%i))@]" c d))
+            add_constr;
+    pp_force_newline fmt ();
+    fprintf fmt "ret = optimize(F);@\n";
+    pp_force_newline fmt ();
+    fprintf fmt "@[original = sym(value([%a]))@];\n" (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt "; ")  Formula.Poly.pp) syms_simp ;
+  in
+  (* main *)
+  pp_runsdp [] true;
+  fprintf fmt "  ips = sym(value([%a]));@\n" (pp_print_list ~pp_sep:(fun fmt () -> Format.fprintf fmt " ") (fun fmt -> Format.fprintf fmt "a%i")) (Formula.PPoly.VarSet.elements syms_ip);  
+  fprintf fmt "ips = approximate2(cut_epsilon(ips, 100000), depth);@\n";
+  for i = 0 to ((Formula.PPoly.Monomial.VarSet.cardinal syms_ip) - 1) do
+    fprintf fmt "a%i = ips(%i);@\n" (List.nth (Formula.PPoly.VarSet.elements syms_ip) i) (i + 1)
+  done;
+  fprintf fmt "if ret.problem == 0@\n";
+  
+  fprintf fmt "  ip = '';@\n";
+  fprintf fmt "  @[%a@]" pp_formula ip;
+  fprintf fmt "  %% Iptest: %a@\n" (pp_print_list ~pp_sep:(fun fmt () -> Format.fprintf fmt " ") (fun fmt -> Format.fprintf fmt "a%i")) (Formula.PPoly.VarSet.elements syms_ip);
+  fprintf fmt "  %% Iptest, iplen: %i@\n" (Formula.PPoly.VarSet.cardinal syms_ip);
+  fprintf fmt "  %% Iptest, varlen: %i@\n" (List.length syms_simp);
+    pp_print_list (fun fmt var ->
+      fprintf fmt "  ip = strrep(ip, strcat('x', int2str(depends(%a))), '%a');@\n" pp_print_string var pp_print_string var;)
+                fmt
+                (List.rev vars);
+    fprintf fmt "  fprintf('interpolant := %%s\\n', ip);@\n";
+    pp_runsdp (List.map (fun i -> ((List.nth (Formula.PPoly.VarSet.elements syms_ip) i), i+1)) (List.count 0 (Formula.PPoly.VarSet.cardinal syms_ip))) false;
+    fprintf fmt "  if ret.problem == 0@\n";
+    fprintf fmt "    fprintf('This interpolant is valid.\\n');@\n";        
+    fprintf fmt "  else@\n";
+    fprintf fmt "    fprintf('This interpolant is invalid.\\n');@\n";            
+    fprintf fmt "  end@\n";    
+    fprintf fmt "end@\n";  
+    pp_force_newline fmt ()
+  
 
 let print_code sdps =
   printf "  @[<v>%a@]" pp_header ();   
-  printf "  @[<v>%a@]" (pp_print_list pp_sdp) sdps;
+  printf "  @[<v>%a@]" (pp_print_list pp_sdp2) sdps;
   printf "  return;@\n"
