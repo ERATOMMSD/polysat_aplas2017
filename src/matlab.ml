@@ -73,10 +73,6 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
   fprintf fmt "@[<h>sdpvar %a;@]@\n"
     (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt " ") pp_print_string)
     vars;
-  (* fpritnf fmt "@[vars_str@]@\n"; *)
-  (* for i = 0 to ((List.length vars) - 1) do *)
-  (*   fprintf fmt  *)
-  (* done; *)
   pp_force_newline fmt ();
 
   let syms_ip = Formula.syms_ip ip in
@@ -111,21 +107,6 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
 
   let syms_simp = List.reduce_dup syms
   in
-  
-  (* fprintf fmt "@[<h>ip = %a;@]@\n" Formula.Poly.pp ip; *)
-  (* fprintf fmt "obj = norm(coefficients(ip, [%a]), 1);@\n" *)
-  (*   (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt " ") pp_print_string) *)
-  (*   vars; *)
-  (* pp_force_newline fmt (); *)
-
-  (* fprintf fmt "ret = optimize(F, %a);@\n" (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt " + ") (fun fmt a -> fprintf fmt "%a" Formula.Poly.pp a)) syms_simp; *)
-  (* fprintf fmt "ret = optimize(F);@\n"; *)
-  (* let sum_trace fmt () = pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt " + ") *)
-  (*                                      (fun fmt a -> fprintf fmt "trace(Q%i)" a) *)
-  (*                                      fmt *)
-  (*                                      (List.count 0 (List.length psds)) *)
-  (* in *)
-  (* fprintf fmt "ret = optimize(F, %a);@\n" sum_trace (); *)
   fprintf fmt "ret = optimize(F);@\n";
   fprintf fmt "sol = containers.Map;@\n";
   ignore (List.map (fun a -> fprintf fmt "sol('%a') = %a;@\n" Formula.Poly.pp a Formula.Poly.pp a) syms_simp);
@@ -141,7 +122,11 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
   fprintf fmt "%% Test: variables are %a @\n"
           (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt ", ")  Formula.Poly.pp) (syms_simp);
 
-  (* Making linear constraints *)
+  fprintf fmt "%% Approximating coefficients in IP.@\n";
+  fprintf fmt "  ips = sym(value([%a]));@\n" (pp_print_list ~pp_sep:(fun fmt () -> Format.fprintf fmt " ") (fun fmt -> Format.fprintf fmt "a%i")) (Formula.PPoly.VarSet.elements syms_ip);  
+  fprintf fmt "ips = approximate2(cut_epsilon(ips, 100000), depth);@\n";
+
+  (* Making linear constraints from SDP constraints*)
   fprintf fmt "A = zeros(%i, %i);@\n" (List.length zeros_lin) (List.length syms_simp);
   for i = 0 to (List.length zeros_lin - 1) do
     let sym_to_mon = (fun elt ->
@@ -157,6 +142,9 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
                 (i+1) (List.find_index ((==) t) syms_simp_m + 1) (Num.string_of_num c)) fmt lc;
     pp_force_newline fmt ();
   done;
+
+  (* Making constant constraints 
+  
   fprintf fmt "@[<h>A=sym(A)@];@\n";
   fprintf fmt "@[if skip_gauss@]\n"; (* if of skip_gauss *)
   fprintf fmt "@[load('B_num.dat', '-ascii');@]\n";
