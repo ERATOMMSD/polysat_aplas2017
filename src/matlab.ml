@@ -152,7 +152,7 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
   fprintf fmt "@['Gauss'@]@\n";  
   fprintf fmt "r = sum(sum(B*U));@\n";
   fprintf fmt "@[original = [%a]@];\n" (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt "; ")  Formula.Poly.pp) syms_simp ;
-  fprintf fmt "@[original = cut_epsilon(original, 1000000)@];\n";
+  (* fprintf fmt "@[original = cut_epsilon(original, 1000000)@];\n"; *)
   fprintf fmt "@[fitted = Uinv*original@];@\n";
   fprintf fmt "@[ess = fitted(r+1:length(fitted), 1)@];@\n";
   fprintf fmt "@[ess = sym(ess)@];@\n";
@@ -160,7 +160,9 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
   (* EX:s *)
   fprintf fmt "@[ess = double(ess)@];@\n";
   fprintf fmt "@[ess = ess/max(abs(ess))@];@\n";
-  fprintf fmt "@[ess = sym(ess)@];@\n";      
+  fprintf fmt "@[[ess1,ess2] = rat(ess)@];@\n";
+  fprintf fmt "@[ess = sym(ess1./ess2)@];@\n";    
+  (* fprintf fmt "@[ess = sym(ess)@];@\n";       *)
   (* EX *)
   fprintf fmt "@[fitted = vertcat(zeros(double(r), 1), ess);@]@\n";
   fprintf fmt "@[app = U*fitted;@]@\n";
