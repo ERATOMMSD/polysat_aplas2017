@@ -122,10 +122,6 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
   fprintf fmt "%% Test: variables are %a @\n"
           (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt ", ")  Formula.Poly.pp) (syms_simp);
 
-  fprintf fmt "%% Approximating coefficients in IP.@\n";
-  fprintf fmt "  ips = sym(value([%a]));@\n" (pp_print_list ~pp_sep:(fun fmt () -> Format.fprintf fmt " ") (fun fmt -> Format.fprintf fmt "a%i")) (Formula.PPoly.VarSet.elements syms_ip);  
-  fprintf fmt "ips = approximate2(cut_epsilon(ips, 100000), depth);@\n";
-
   (* Making linear constraints from SDP constraints*)
   fprintf fmt "A = zeros(%i, %i);@\n" (List.length zeros_lin) (List.length syms_simp);
   for i = 0 to (List.length zeros_lin - 1) do
@@ -143,81 +139,18 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
     pp_force_newline fmt ();
   done;
 
-  (* Making constant constraints 
   
   fprintf fmt "@[<h>A=sym(A)@];@\n";
-  fprintf fmt "@[if skip_gauss@]\n"; (* if of skip_gauss *)
-  fprintf fmt "@[load('B_num.dat', '-ascii');@]\n";
-  fprintf fmt "@[load('B_den.dat', '-ascii');@]\n";
-  fprintf fmt "@[B_num = sym(B_num);@]\n";
-  fprintf fmt "@[B_den = sym(B_den);@]\n";
-  fprintf fmt "@[B = B_num./B_den;@]\n";
-  fprintf fmt "@[load('U_num.dat', '-ascii');@]\n";
-  fprintf fmt "@[load('U_den.dat', '-ascii');@]\n";
-  fprintf fmt "@[U_num = sym(U_num);@]\n";
-  fprintf fmt "@[U_den = sym(U_den);@]\n";
-  fprintf fmt "@[U = U_num./U_den;@]\n";        
-  fprintf fmt "@[Uinv_num = sym(Uinv_num);@]\n";
-  fprintf fmt "@[Uinv_den = sym(Uinv_den);@]\n";
-  fprintf fmt "@[Uinv = Uinv_num./Uinv_den;@]\n";          
-  fprintf fmt "@[else@]\n"; (* else of skip_gauss *)    
-  fprintf fmt "@[if strcmp(simplify_method, '-easy_gauss')@]\n";
-  fprintf fmt "@[  [B,U,Uinv] = mygaussd(A)@];@\n";
-  fprintf fmt "@[elseif strcmp(simplify_method, '-smith')@]@\n";
-  fprintf fmt "@[  [B,U,V,Uinv,Vinv] = mysmith(A)@];@\n";
-  fprintf fmt "@[  U = sym(V);@\n";
-  fprintf fmt "@[  Uinv = sym(Vinv);@\n";  
-  fprintf fmt "@[else@]@\n";  
-  fprintf fmt "@[  [B,U,Uinv] = mygauss(A)@];@\n";
-  fprintf fmt "@[end@]@\n";
-  fprintf fmt "@[[B_num,B_den] = numden(B);@]\n";
-  fprintf fmt "@[B_num = double(B_num);@]\n";
-  fprintf fmt "@[B_den = double(B_den);@]\n";
-  fprintf fmt "@[save('B_num.dat', 'B_num', '-ascii');@]\n";
-  fprintf fmt "@[save('B_den.dat', 'B_den', '-ascii');@]\n";        
-  fprintf fmt "@[[U_num,U_den] = numden(U);@]\n";
-  fprintf fmt "@[U_num = double(U_num);@]\n";
-  fprintf fmt "@[U_den = double(U_den);@]\n";
-  fprintf fmt "@[save('U_num.dat', 'U_num', '-ascii');@]\n";
-  fprintf fmt "@[save('U_den.dat', 'U_den', '-ascii');@]\n";          
-  fprintf fmt "@[[Uinv_num,Uinv_den] = numden(Uinv);@]\n";
-  fprintf fmt "@[Uinv_num = double(Uinv_num);@]\n";
-  fprintf fmt "@[Uinv_den = double(Uinv_den);@]\n";
-  fprintf fmt "@[save('Uinv_num.dat', 'Uinv_num', '-ascii');@]\n";
-  fprintf fmt "@[save('Uinv_den.dat', 'Uinv_den', '-ascii');@]\n";            
-  fprintf fmt "@[end@]\n";  (* end of skip_gauss *)
+  fprintf fmt "@[[B,U,Uinv] = mygauss(A)@];@\n";
   fprintf fmt "@['Gauss'@]@\n";  
-  (* fprintf fmt "@[<h>B = sym(B)@];@\n";       *)
-  (* fprintf fmt "@[<h>U = sym(U)@];@\n"; *)
-  fprintf fmt "r = rank(A);@\n";
-  (* fprintf fmt "r = double(sum(sum(B*U)));@\n"; *)
+  fprintf fmt "r = sum(sum(B));@\n";
   fprintf fmt "@[original = [%a]@];\n" (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt "; ")  Formula.Poly.pp) syms_simp ;
+  fprintf fmt "@[original = cut_epsilon_abs(original, 1000000)@];\n";
   fprintf fmt "@[fitted = Uinv*original@];@\n";
   fprintf fmt "@[ess = fitted(r+1:length(fitted), 1)@];@\n";
-  (* fprintf fmt "@[ess = sym(ess)@];@\n";   *)
-  (* fprintf fmt "@[ess = ess/max(abs(ess));@];@\n";     *)
-  fprintf fmt "@[if do_approximate@];@\n";
-  (* fprintf fmt "  @[ess = double(ess);@];@\n"; *)
-  fprintf fmt "  m = max(abs(ess));@\n";
-  (* fprintf fmt "  for i=1:length(ess);@\n"; *)
-  (* fprintf fmt "    if abs(ess(i)) < m/100000@\n"; *)
-  (* fprintf fmt "      ess(i) = 0;@\n";   *)
-  (* fprintf fmt "    end@\n";     *)
-  (* fprintf fmt "  end;@\n";     *)
-  fprintf fmt "  @[ess = approximate2(cut_epsilon(ess, 100000), depth);@];@\n";
-  fprintf fmt "@[else@];@\n";
-  fprintf fmt "  @[ess = double(ess);@];@\n";
-  fprintf fmt "  @[ess = ess/max(abs(ess));@];@\n";
-  fprintf fmt "  @[[ess1,ess2] = rat(ess)@];@\n";
-  fprintf fmt "  @[ess = sym(ess1./ess2)@];@\n";
-  fprintf fmt "@[end@];@\n";  
-  
-  (* fprintf fmt "@[ess = approximate(ess, 0.01);@];@\n"; *)
-  (* fprintf fmt "@[ess = transpose(ess);@];@\n";   *)
-  fprintf fmt "@[fitted = vertcat(zeros(r, 1), ess);@]@\n";
+  fprintf fmt "@[ess = sym(ess)@];@\n";  
+  fprintf fmt "@[fitted = vertcat(zeros(double(r), 1), ess);@]@\n";
   fprintf fmt "@[app = U*fitted;@]@\n";
-  (* fprintf fmt "@[app = app/mygcd(app);@]@\n"; *)
-  (* fprintf fmt "@[app = double(app);@]@\n";     *)
   for i = 0 to (List.length(syms_simp) - 1) do
     fprintf fmt "%a = app(%i, 1);@\n" Formula.Poly.pp (List.nth syms_simp i) (i + 1)
   done;
@@ -380,5 +313,5 @@ let pp_sdp2 fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
 
 let print_code sdps =
   printf "  @[<v>%a@]" pp_header ();   
-  printf "  @[<v>%a@]" (pp_print_list pp_sdp2) sdps;
+  printf "  @[<v>%a@]" (pp_print_list pp_sdp) sdps;
   printf "  return;@\n"
