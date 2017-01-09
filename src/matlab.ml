@@ -157,6 +157,11 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
   fprintf fmt "@[ess = fitted(r+1:length(fitted), 1)@];@\n";
   fprintf fmt "@[ess = sym(ess)@];@\n";
   (* fprintf fmt "@[ess = approximate2(ess, depth)@];@\n";   *)
+  (* EX:s *)
+  fprintf fmt "@[ess = double(ess)@];@\n";
+  fprintf fmt "@[ess = ess/max(abs(ess))@];@\n";
+  fprintf fmt "@[ess = sym(ess)@];@\n";      
+  (* EX *)
   fprintf fmt "@[fitted = vertcat(zeros(double(r), 1), ess);@]@\n";
   fprintf fmt "@[app = U*fitted;@]@\n";
   for i = 0 to (List.length(syms_simp) - 1) do
