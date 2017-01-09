@@ -64,17 +64,7 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
     List.map Formula.Poly.Matrix.to_list_list psds
     |> List.concat |> List.concat
   in
-  fprintf fmt "@[<h>sdpvar %a;@]@\n"
-    (pp_print_list ~pp_sep:(fun fmt () -> Format.fprintf fmt " ") Formula.Poly.pp)
-    syms;
-  pp_force_newline fmt ();
-
   let vars = Formula.vars ip |> Formula.Poly.VarSet.elements in
-  fprintf fmt "@[<h>sdpvar %a;@]@\n"
-    (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt " ") pp_print_string)
-    vars;
-  pp_force_newline fmt ();
-
   let syms_ip = Formula.syms_ip ip in
 
   let (zeros_nonlin, zeros_lin) =
@@ -87,10 +77,25 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
     fprintf fmt "@[<v>%a@]@\n"
             (pp_print_list
                (fun fmt (i, m) -> fprintf fmt "@[<h>Q%d = %a;@]" i Formula.Poly.Matrix.pp m))
-            (List.combine l psds);) in
+            (List.combine l psds);)
+  in
+  let syms_simp = List.reduce_dup syms
+  in
+  (* Start print *)
+  (* Definition of sdpvar such as a_0,...*)
+  fprintf fmt "@[<h>sdpvar %a;@]@\n"
+    (pp_print_list ~pp_sep:(fun fmt () -> Format.fprintf fmt " ") Formula.Poly.pp)
+    syms;
+  pp_force_newline fmt ();
+  (* Definition of sdpvar such as x,y,z,...*)  
+  fprintf fmt "@[<h>sdpvar %a;@]@\n"
+    (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt " ") pp_print_string)
+    vars;
+  pp_force_newline fmt ();
+  (* Definition of semidefinite matrix *)
   assign_Q ();
   pp_force_newline fmt ();
-
+  (* Definition of constraints *)
   fprintf fmt "F = [@[%a;@\n"
     (pp_print_list ~pp_sep:(fun fmt () -> Format.fprintf fmt "; ")
        (fun fmt d -> fprintf fmt "Q%d >= 0" d))
@@ -104,15 +109,15 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
        (fun fmt c -> fprintf fmt "@[<h>%a >= 0@]" Formula.PPoly.pp c))
     zeros_nonlin;
   pp_force_newline fmt ();
-
-  let syms_simp = List.reduce_dup syms
-  in
+  (* Run solver *)
   fprintf fmt "ret = optimize(F);@\n";
+  (* Record original solution *)
   fprintf fmt "sol = containers.Map;@\n";
   ignore (List.map (fun a -> fprintf fmt "sol('%a') = %a;@\n" Formula.Poly.pp a Formula.Poly.pp a) syms_simp);
   pp_force_newline fmt ();
 
   fprintf fmt "if ret.problem == 0@\n";
+  (* Assign solution *)
   fprintf fmt "  @[<v>%a@]@\n"
     (pp_print_list
        (fun fmt a -> fprintf fmt "@[<h>%a = value(%a);@]" Formula.Poly.pp a Formula.Poly.pp a))
@@ -232,7 +237,7 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
   fprintf fmt "end@\n";
   fprintf fmt "  return;@\n";
 
-  fprintf fmt "elseif ret.problem == 1@\n";
+  fprintf fmt "elseif ret.problem == 1@\n"; (* end of ret.problem*)
   fprintf fmt "  disp('Infeasible');@\n";
   fprintf fmt "else@\n";
   fprintf fmt "  disp(yalmiperror(ret.problem))@\n";
