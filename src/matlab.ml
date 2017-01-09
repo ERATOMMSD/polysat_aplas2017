@@ -138,17 +138,24 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
                 (i+1) (List.find_index ((==) t) syms_simp_m + 1) (Num.string_of_num c)) fmt lc;
     pp_force_newline fmt ();
   done;
-
-  
   fprintf fmt "@[<h>A=sym(A)@];@\n";
+  fprintf fmt "@[<h>if skip_gauss@];@\n"; (* start skip *)
+  fprintf fmt "@[B = load_sym('B')@];@\n";
+  fprintf fmt "@[U = load_sym('U')@];@\n";
+  fprintf fmt "@[Uinv = load_sym('Uinv')@];@\n";    
+  fprintf fmt "@[<h>else@];@\n";  (* else skip *)
   fprintf fmt "@[[B,U,Uinv] = mygauss(A)@];@\n";
+  fprintf fmt "@[save_sym(B, 'B')@];@\n";
+  fprintf fmt "@[save_sym(U, 'U')@];@\n";
+  fprintf fmt "@[save_sym(Uinv, 'Uinv')@];@\n";      
+  fprintf fmt "@[<h>end@];@\n";   (*end skip *)
   fprintf fmt "@['Gauss'@]@\n";  
-  fprintf fmt "r = sum(sum(B));@\n";
+  fprintf fmt "r = sum(sum(B*U));@\n";
   fprintf fmt "@[original = [%a]@];\n" (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt "; ")  Formula.Poly.pp) syms_simp ;
   fprintf fmt "@[original = cut_epsilon_abs(original, 1000000)@];\n";
   fprintf fmt "@[fitted = Uinv*original@];@\n";
   fprintf fmt "@[ess = fitted(r+1:length(fitted), 1)@];@\n";
-  fprintf fmt "@[ess = sym(ess)@];@\n";  
+  fprintf fmt "@[ess = sym(ess)@];@\n";
   fprintf fmt "@[fitted = vertcat(zeros(double(r), 1), ess);@]@\n";
   fprintf fmt "@[app = U*fitted;@]@\n";
   for i = 0 to (List.length(syms_simp) - 1) do
