@@ -215,6 +215,7 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
   fprintf fmt "@['Linsolve end'@]@\n";    
   fprintf fmt "  r = double(sum(sum(BB*UU)));@\n";  
   fprintf fmt "@[original = value([%a])@];\n" (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt "; ")  Formula.Poly.pp) syms_simp ;
+  fprintf fmt "@[original = original - double(bias)@];@\n";
   fprintf fmt "@[fitted = UUinv*original@];@\n";
   fprintf fmt "@[ess = fitted(r+1:length(fitted), 1)@];@\n";
   fprintf fmt "@[ess = sym(ess)@];@\n";
