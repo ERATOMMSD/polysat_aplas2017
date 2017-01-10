@@ -156,7 +156,7 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
   fprintf fmt "@[U = load_sym('U')@];@\n";
   fprintf fmt "@[Uinv = load_sym('Uinv')@];@\n";    
   fprintf fmt "@[<h>else@];@\n";  (* else skip *)
-  fprintf fmt "@[[B,U,Uinv] = mygauss(A)@];@\n";
+  fprintf fmt "@[[B,U,Uinv] = mygauss_mathematica(A)@];@\n";
   fprintf fmt "@[save_sym(B, 'B')@];@\n";
   fprintf fmt "@[save_sym(U, 'U')@];@\n";
   fprintf fmt "@[save_sym(Uinv, 'Uinv')@];@\n";      
@@ -205,13 +205,14 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
   fprintf fmt "@[UU = load_sym('UU')@];@\n";
   fprintf fmt "@[UUinv = load_sym('UUinv')@];@\n";    
   fprintf fmt "@[<h>else@];@\n";  (* else skip *)
-  fprintf fmt "  [BB,UU,UUinv] = mygauss(A);@\n";
+  fprintf fmt "  [BB,UU,UUinv] = mygauss_mathematica(A);@\n";
   fprintf fmt "@[save_sym(BB, 'BB')@];@\n";
   fprintf fmt "@[save_sym(UU, 'UU')@];@\n";
   fprintf fmt "@[save_sym(UUinv, 'UUinv')@];@\n";      
   fprintf fmt "@[<h>end@];@\n";   (*end skip *)
   fprintf fmt "@['Gauss'@]@\n";  
-  fprintf fmt "  [bias, ~] = linsolve(A, B);@\n";
+  fprintf fmt "  bias = linsolve_mathematica(A, B);@\n";
+  fprintf fmt "@['Linsolve end'@]@\n";    
   fprintf fmt "  r = double(sum(sum(BB*UU)));@\n";  
   fprintf fmt "@[original = value([%a])@];\n" (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt "; ")  Formula.Poly.pp) syms_simp ;
   fprintf fmt "@[fitted = UUinv*original@];@\n";
