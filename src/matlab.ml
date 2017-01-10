@@ -73,28 +73,34 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
   in
 
   let l = Util.List.count 0 (List.length psds) in
-  let assign_Q = (fun () ->
-    fprintf fmt "@[<v>%a@]@\n"
-            (pp_print_list
-               (fun fmt (i, m) -> fprintf fmt "@[<h>Q%d = %a;@]" i Formula.Poly.Matrix.pp m))
-            (List.combine l psds);)
-  in
   let syms_simp = List.reduce_dup syms
   in
   (* Start print *)
   (* Definition of sdpvar such as a_0,...*)
+  let print_sdpvar () =
   fprintf fmt "@[<h>sdpvar %a;@]@\n"
     (pp_print_list ~pp_sep:(fun fmt () -> Format.fprintf fmt " ") Formula.Poly.pp)
     syms;
   pp_force_newline fmt ();
-  (* Definition of sdpvar such as x,y,z,...*)  
+  in
+  print_sdpvar ();
+  (* Definition of sdpvar such as x,y,z,...*)
+  let print_var () = 
   fprintf fmt "@[<h>sdpvar %a;@]@\n"
     (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt " ") pp_print_string)
     vars;
   pp_force_newline fmt ();
+  in
+  print_var ();
   (* Definition of semidefinite matrix *)
+  let assign_Q () =
+    fprintf fmt "@[<v>%a@]@\n"
+    (pp_print_list
+       (fun fmt (i, m) -> fprintf fmt "@[<h>Q%d = %a;@]" i Formula.Poly.Matrix.pp m))
+    (List.combine l psds);
+    pp_force_newline fmt ();
+  in  
   assign_Q ();
-  pp_force_newline fmt ();
   (* Definition of constraints *)
   fprintf fmt "F = [@[%a;@\n"
     (pp_print_list ~pp_sep:(fun fmt () -> Format.fprintf fmt "; ")
@@ -116,7 +122,7 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
   ignore (List.map (fun a -> fprintf fmt "sol('%a') = %a;@\n" Formula.Poly.pp a Formula.Poly.pp a) syms_simp);
   pp_force_newline fmt ();
 
-  fprintf fmt "if ret.problem == 0@\n";
+  fprintf fmt "if ret.problem == 0@\n"; (* if ret.problem *)
   (* Assign solution *)
   fprintf fmt "  @[<v>%a@]@\n"
     (pp_print_list
@@ -129,12 +135,13 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
 
   (* Making linear constraints from SDP constraints*)
   fprintf fmt "A = zeros(%i, %i);@\n" (List.length zeros_lin) (List.length syms_simp);
+  let sym_to_mon = (fun elt ->
+      let (h,_) = List.hd (Formula.PPoly.to_list (Formula.Poly.to_const elt))
+      in h)
+  in
+  let syms_simp_m = List.map sym_to_mon syms_simp
+  in
   for i = 0 to (List.length zeros_lin - 1) do
-    let sym_to_mon = (fun elt ->
-        let (h,_) = List.hd (Formula.PPoly.to_list (Formula.Poly.to_const elt))
-        in h)
-    in
-    let syms_simp_m = List.map sym_to_mon syms_simp in
     (* linear constraints *)
     let lc = Formula.PPoly.to_list (List.nth zeros_lin i) in
     pp_print_list
@@ -157,20 +164,65 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
   fprintf fmt "@['Gauss'@]@\n";  
   fprintf fmt "r = sum(sum(B*U));@\n";
   fprintf fmt "@[original = [%a]@];\n" (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt "; ")  Formula.Poly.pp) syms_simp ;
-  (* fprintf fmt "@[original = cut_epsilon(original, 1000000)@];\n"; *)
-  fprintf fmt "@[fitted = Uinv*original@];@\n";
+  fprintf fmt "  ips = sym(value([%a]));@\n" (pp_print_list ~pp_sep:(fun fmt () -> Format.fprintf fmt " ") (fun fmt -> Format.fprintf fmt "a%i")) (Formula.PPoly.VarSet.elements syms_ip);  
+  fprintf fmt "ips = approximate2(cut_epsilon(ips, 100000), depth);@\n";
+  print_sdpvar ();
+  print_var();
+  assign_Q();
+  fprintf fmt "F = [@[%a;@\n"
+          (pp_print_list ~pp_sep:(fun fmt () -> Format.fprintf fmt "; ")
+       (fun fmt d -> fprintf fmt "Q%d >= 0" d))
+    l;
+  fprintf fmt "@[<v>%a@]@];@\n"
+    (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt ";@,")
+       (fun fmt c -> fprintf fmt "@[<h>%a == 0@]" Formula.PPoly.pp c))
+    zeros_lin;
+  fprintf fmt "@[<v>%a@]@]];@\n"
+    (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt ";@,")
+       (fun fmt i -> fprintf fmt "@[<h>a%i == double(ips(%i))@]" (List.nth (Formula.PPoly.VarSet.elements syms_ip) i) (i + 1)))
+    (List.count 0 (Formula.PPoly.VarSet.cardinal syms_ip));  
+  pp_force_newline fmt ();
+  (* Run solver *)
+  fprintf fmt "ret = optimize(F);@\n";
+  fprintf fmt "if ret.problem == 0@\n";
+  fprintf fmt "  A2 = zeros(%i, %i);@\n"  (Formula.PPoly.VarSet.cardinal syms_ip) (List.length syms_simp);
+  fprintf fmt "  B = zeros(%i, 1);@\n" (Formula.PPoly.VarSet.cardinal syms_ip);  
+  for i = 0 to (Formula.PPoly.VarSet.cardinal syms_ip - 1) do
+    let syms_ip_lst = Formula.PPoly.VarSet.elements syms_ip
+    in
+    let syms_simp_m_i = List.map (Formula.PPoly.Monomial.VarSet.choose) (List.map (Formula.PPoly.Monomial.vars) syms_simp_m)
+    in
+    let ind = (List.find_index ((==) (List.nth syms_ip_lst i)) syms_simp_m_i) + 1
+    in
+    fprintf fmt "  A2(%i, %i) = 1;@\n" (i+1) ind;
+    fprintf fmt "  B(%i, 1) = ips(%i);@\n" (i+1) (i+1);
+  done;
+  fprintf fmt "  A = vertcat(A, A2);@\n";
+  fprintf fmt "  B = vertcat(zeros(%i, 1), B);@\n" (List.length zeros_lin);
+
+  fprintf fmt "@[<h>if skip_gauss@];@\n"; (* start skip *)
+  fprintf fmt "@[BB = load_sym('BB')@];@\n";
+  fprintf fmt "@[UU = load_sym('UU')@];@\n";
+  fprintf fmt "@[UUinv = load_sym('UUinv')@];@\n";    
+  fprintf fmt "@[<h>else@];@\n";  (* else skip *)
+  fprintf fmt "  [BB,UU,UUinv] = mygauss(A);@\n";
+  fprintf fmt "@[save_sym(BB, 'BB')@];@\n";
+  fprintf fmt "@[save_sym(UU, 'UU')@];@\n";
+  fprintf fmt "@[save_sym(UUinv, 'UUinv')@];@\n";      
+  fprintf fmt "@[<h>end@];@\n";   (*end skip *)
+  fprintf fmt "@['Gauss'@]@\n";  
+  fprintf fmt "  [bias, ~] = linsolve(A, B);@\n";
+  fprintf fmt "  r = double(sum(sum(BB*UU)));@\n";  
+  fprintf fmt "@[original = value([%a])@];\n" (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt "; ")  Formula.Poly.pp) syms_simp ;
+  fprintf fmt "@[fitted = UUinv*original@];@\n";
   fprintf fmt "@[ess = fitted(r+1:length(fitted), 1)@];@\n";
   fprintf fmt "@[ess = sym(ess)@];@\n";
-  (* fprintf fmt "@[ess = approximate2(ess, depth)@];@\n";   *)
-  (* EX:s *)
   fprintf fmt "@[ess = double(ess)@];@\n";
   fprintf fmt "@[ess = ess/max(abs(ess))@];@\n";
   fprintf fmt "@[[ess1,ess2] = rat(ess)@];@\n";
   fprintf fmt "@[ess = sym(ess1./ess2)@];@\n";    
-  (* fprintf fmt "@[ess = sym(ess)@];@\n";       *)
-  (* EX *)
   fprintf fmt "@[fitted = vertcat(zeros(double(r), 1), ess);@]@\n";
-  fprintf fmt "@[app = U*fitted;@]@\n";
+  fprintf fmt "@[app = UU*fitted + bias;@]@\n";
   for i = 0 to (List.length(syms_simp) - 1) do
     fprintf fmt "%a = app(%i, 1);@\n" Formula.Poly.pp (List.nth syms_simp i) (i + 1)
   done;
@@ -223,7 +275,6 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
   fprintf fmt "  %% Iptest: %a@\n" (pp_print_list ~pp_sep:(fun fmt () -> Format.fprintf fmt " ") (fun fmt -> Format.fprintf fmt "a%i")) (Formula.PPoly.VarSet.elements syms_ip);
   fprintf fmt "  %% Iptest, iplen: %i@\n" (Formula.PPoly.VarSet.cardinal syms_ip);
   fprintf fmt "  %% Iptest, varlen: %i@\n" (List.length syms_simp);
-  fprintf fmt "  x = [%a]@\n" (pp_print_list ~pp_sep:(fun fmt () -> Format.fprintf fmt " ") (fun fmt -> Format.fprintf fmt "sol('a%i')")) (Formula.PPoly.VarSet.elements syms_ip);  
   pp_print_list (fun fmt var ->
       fprintf fmt "  ip = strrep(ip, strcat('x', int2str(depends(%a))), '%a');@\n" pp_print_string var pp_print_string var;)
                 fmt
@@ -236,12 +287,20 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
   fprintf fmt "  fprintf('This interpolant is invalid.\\n');@\n";
   fprintf fmt "end@\n";
   fprintf fmt "  return;@\n";
-
-  fprintf fmt "elseif ret.problem == 1@\n"; (* end of ret.problem*)
-  fprintf fmt "  disp('Infeasible');@\n";
+  
+  
+  
   fprintf fmt "else@\n";
+  fprintf fmt "return;@\n";      
+  fprintf fmt "end@\n";    
+
+
+
+  fprintf fmt "elseif ret.problem == 1@\n"; (* elseif of ret.problem*)
+  fprintf fmt "  disp('Infeasible');@\n";
+  fprintf fmt "else@\n"; (* else ret.problem *)
   fprintf fmt "  disp(yalmiperror(ret.problem))@\n";
-  fprintf fmt "end@\n"
+  fprintf fmt "end@\n" (* end ret.problem *)
 
 let pp_header fmt () =
   fprintf fmt "tolerance = 0.01;@\n";
