@@ -122,13 +122,29 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
   ignore (List.map (fun a -> fprintf fmt "sol('%a') = %a;@\n" Formula.Poly.pp a Formula.Poly.pp a) syms_simp);
   pp_force_newline fmt ();
 
-  fprintf fmt "if ret.problem == 0@\n"; (* if ret.problem *)
+
   (* Assign solution *)
   fprintf fmt "  @[<v>%a@]@\n"
     (pp_print_list
        (fun fmt a -> fprintf fmt "@[<h>%a = value(%a);@]" Formula.Poly.pp a Formula.Poly.pp a))
     syms;
   pp_force_newline fmt ();
+
+  (* show raw interpolant *)
+  fprintf fmt "if ret.problem == 0@\n"; (* if ret.problem *)
+    fprintf fmt "  ip = '';@\n";
+  fprintf fmt "  @[%a@]" pp_formula ip;
+  fprintf fmt "  %% Iptest: %a@\n" (pp_print_list ~pp_sep:(fun fmt () -> Format.fprintf fmt " ") (fun fmt -> Format.fprintf fmt "a%i")) (Formula.PPoly.VarSet.elements syms_ip);
+  fprintf fmt "  %% Iptest, iplen: %i@\n" (Formula.PPoly.VarSet.cardinal syms_ip);
+  fprintf fmt "  %% Iptest, varlen: %i@\n" (List.length syms_simp);
+  pp_print_list (fun fmt var ->
+      fprintf fmt "  ip = strrep(ip, strcat('x', int2str(depends(%a))), '%a');@\n" pp_print_string var pp_print_string var;)
+                fmt
+                (List.rev vars);
+  pp_force_newline fmt ();
+  fprintf fmt "  fprintf('interpolant := %%s\\n', ip);@\n";
+
+  (* end show raw interpolant *)
 
   fprintf fmt "%% Test: variables are %a @\n"
           (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt ", ")  Formula.Poly.pp) (syms_simp);
@@ -288,12 +304,9 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
   fprintf fmt "else@\n";
   fprintf fmt "  fprintf('This interpolant is invalid.\\n');@\n";
   fprintf fmt "end@\n";
-  fprintf fmt "  return;@\n";
   
   
   
-  fprintf fmt "else@\n";
-  fprintf fmt "return;@\n";      
   fprintf fmt "end@\n";    
 
 
