@@ -79,8 +79,11 @@ val pp: Format.formatter -> t -> unit
 (** [vars t] returns the set of variables occuring in [t]. *)
 val vars: t -> Poly.VarSet.t
 
-(** [vars t] returns the set of SDP variables occuring in the coefficients of [t]. *)
+(** [syms_ip t] returns the set of SDP variables occuring in the coefficients of [t]. *)
 val syms_ip: t -> PPoly.VarSet.t
+
+(** [polys t] returns the set of polynomials. *)
+val polys: t -> Poly.t list                    
 
 (** Type of conjunctions of (in)equalities *)
 type conj = { eqzs: Poly.t list; gtzs: Poly.t list; gezs: Poly.t list }

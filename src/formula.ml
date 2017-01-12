@@ -234,6 +234,12 @@ let syms_ip t =
        (fun (EqZ p | NeqZ p | GeZ p | GtZ p) vars -> PPoly.VarSet.union vars ((coeff_vars (coeffs p)))))
     t PPoly.VarSet.empty
 
+let polys t =
+  DisjSet.fold
+    (ConjSet.fold
+       (fun (EqZ p | NeqZ p | GeZ p | GtZ p) polys -> p::polys))
+    t []
+                 
     
 type conj = { eqzs: Poly.t list; gtzs: Poly.t list; gezs: Poly.t list }
 
