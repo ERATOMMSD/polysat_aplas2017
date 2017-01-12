@@ -311,7 +311,7 @@ let pp_header fmt () =
   fprintf fmt "simplify_method = '-gauss'; %% -gauss, -smith, -easy_gauss@\n";
   fprintf fmt "skip_gauss = false;@\n";
   fprintf fmt "ignore_sc = false;@\n";
-  fprintf fmt "depth = 3;@\n"
+  fprintf fmt "depth = 1;@\n"
 
 let pp_sdp2 fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
   let syms =
