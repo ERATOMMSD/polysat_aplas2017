@@ -77,7 +77,40 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip; Constraint.ce
   (* Start print *)
   (* print certificates *)
   fprintf fmt "%% Certificates: @\n";
-  pp_print_list (fun fmt p -> fprintf fmt "@[<h>%% %a@]" Poly.pp p) fmt certs;
+  pp_print_list (fun fmt (f1,f2,g,h1,h2) ->
+      fprintf fmt "@[<h>%% f1: ";
+      pp_print_list ~pp_sep:(fun fmt () -> Format.fprintf fmt ", ")
+                    (fun fmt (a, b) -> Format.fprintf fmt "(%a: %a)" Poly.pp a Poly.pp b)
+                    fmt f1;
+      fprintf fmt "@]";
+      pp_force_newline fmt ();
+      fprintf fmt "@[<h>%% f2: ";
+      pp_print_list ~pp_sep:(fun fmt () -> Format.fprintf fmt ", ")
+                    (fun fmt (a, b) -> Format.fprintf fmt "(%a: %a)" Poly.pp a Poly.pp b)
+                    fmt f2;
+      fprintf fmt "@]" ;     
+      pp_force_newline fmt ();
+      fprintf fmt "@[<h>%% g: ";
+      pp_print_list ~pp_sep:(fun fmt () -> Format.fprintf fmt ", ")
+                    (fun fmt (a, b) -> Format.fprintf fmt "(%a: %a)" Poly.pp a Poly.pp b)
+                    fmt g;
+      fprintf fmt "@]"  ;    
+      pp_force_newline fmt ();
+      fprintf fmt "@[<h>%% h1: ";
+      pp_print_list ~pp_sep:(fun fmt () -> Format.fprintf fmt ", ")
+                    (fun fmt (a, b, c) -> Format.fprintf fmt "(%a: %a: %a)" Poly.pp a Poly.pp b Poly.pp c)
+                    fmt h1;
+      fprintf fmt "@]" ;     
+      pp_force_newline fmt ();
+      fprintf fmt "@[<h>%% h2: ";
+      pp_print_list ~pp_sep:(fun fmt () -> Format.fprintf fmt ", ")
+                    (fun fmt (a, b, c) -> Format.fprintf fmt "(%a: %a: %a)" Poly.pp a Poly.pp b Poly.pp c)
+                    fmt h2;
+      fprintf fmt "@]"  ;    
+      pp_force_newline fmt ();
+
+ )
+                fmt certs;
   pp_force_newline fmt ();
   (* Definition of sdpvar such as a_0,...*)
   let print_sdpvar () =

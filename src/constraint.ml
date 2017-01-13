@@ -27,25 +27,27 @@ open Util
     in the theorem.
 *)
 let ip_candidate sys1 sys2 vars degree =
-  let psdsf1, f1 = Formula.Poly.gen_cone (sys1.Formula.gezs @ sys1.Formula.gtzs) vars degree in
-  let psdsf2, f2 = Formula.Poly.gen_cone (sys2.Formula.gezs @ sys2.Formula.gtzs) vars degree in
-  let psdsg1, g1, zero1 = Formula.Poly.gen_strict_cone sys1.Formula.gtzs degree in
-    let psdsg2, g2, zero2 = Formula.Poly.gen_strict_cone sys2.Formula.gtzs degree in
-  let psdsh1, h1 = Formula.Poly.gen_ideal sys1.Formula.eqzs vars degree in
-  let psdsh2, h2 = Formula.Poly.gen_ideal sys2.Formula.eqzs vars degree in
+  let psdsf1, f1, f1terms = Formula.Poly.gen_cone (sys1.Formula.gezs @ sys1.Formula.gtzs) vars degree in
+  let psdsf2, f2, f2terms = Formula.Poly.gen_cone (sys2.Formula.gezs @ sys2.Formula.gtzs) vars degree in
+  let psdsg1, g1, zero1, g1terms = Formula.Poly.gen_strict_cone sys1.Formula.gtzs degree in
+    let psdsg2, g2, zero2, g2terms = Formula.Poly.gen_strict_cone sys2.Formula.gtzs degree in
+  let psdsh1, h1, h1terms = Formula.Poly.gen_ideal sys1.Formula.eqzs vars degree in
+  let psdsh2, h2, h2terms = Formula.Poly.gen_ideal sys2.Formula.eqzs vars degree in
   let cert1 = Formula.Poly.Op.(f1 + f2 + h1 + h2 + g1) in
   let zeros1 = List.map snd (Formula.Poly.to_list cert1) in
   let ip1 = Formula.Poly.Op.(f1 + h1 + g1) in
   let cert2 = Formula.Poly.Op.(f1 + f2 + h1 + h2 + g2) in
   let zeros2 = List.map snd (Formula.Poly.to_list cert2) in
   let ip2 = Formula.Poly.Op.(f2 + h2 + g2) in
-  [(psdsf1 @ psdsf2 @ psdsg1 @ psdsh1 @ psdsh2, zero1 :: zeros1, ip1, [cert1], true); (psdsf1 @ psdsf2 @ psdsg2 @ psdsh1 @ psdsh2, zero2 :: zeros2, ip2, [cert2], false)]
+  let terms1 = (f1terms, f2terms, g1terms, h1terms, h2terms) in
+  let terms2 = (f1terms, f2terms, g2terms, h1terms, h2terms) in  
+  [(psdsf1 @ psdsf2 @ psdsg1 @ psdsh1 @ psdsh2, zero1 :: zeros1, ip1, [terms1], true); (psdsf1 @ psdsf2 @ psdsg2 @ psdsh1 @ psdsh2, zero2 :: zeros2, ip2, [terms2], false)]
 
 type sdp = {
   psds : Formula.Poly.Matrix.t list;
   zeros : Formula.PPoly.t list;
   ip : Formula.t;
-  certs: Formula.Poly.t list;
+  certs: ((Formula.Poly.Matrix.elt*Formula.Poly.t) list * (Formula.Poly.Matrix.elt*Formula.Poly.t) list * (Formula.Poly.Matrix.elt*Formula.Poly.t) list * (Formula.Poly.Matrix.elt*Formula.Poly.Matrix.elt*Formula.Poly.t) list * (Formula.Poly.Matrix.elt*Formula.Poly.Matrix.elt*Formula.Poly.t) list) list;
 }
 
 (** [ip f1 f2 template degree] generates an interpolant candidate with the same

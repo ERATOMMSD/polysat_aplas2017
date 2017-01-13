@@ -76,10 +76,10 @@ module Poly = struct
     in
     let combs = power tl |> List.map (List.fold_left mult one) in
     List.fold_left
-      (fun (psds, cone) comb ->
+      (fun (psds, cone, terms) comb ->
          let psd, sos = sos vars d in
-         (psd :: psds, Op.(cone + sos * comb)))
-      ([], zero) combs
+         (psd :: psds, Op.(cone + sos * comb), (sos,comb)::terms))
+      ([], zero, []) combs
 
   let gen_strict_cone tl d =
     let combs =
@@ -90,18 +90,18 @@ module Poly = struct
       |> List.map (List.fold_left mult one)
     in
     List.fold_left
-      (fun (psds, strict_cone, sum_of_coefficients_minus_1) comb ->
+      (fun (psds, strict_cone, sum_of_coefficients_minus_1, terms) comb ->
         let psd, nonnegative_coeff = sos P.Monomial.VarSet.empty 0 in
-        (psd :: psds, Op.(strict_cone + nonnegative_coeff * comb), PPoly.Op.(to_const nonnegative_coeff + sum_of_coefficients_minus_1)))
-      ([], zero, PPoly.P.(neg one)) combs
+        (psd :: psds, Op.(strict_cone + nonnegative_coeff * comb), PPoly.Op.(to_const nonnegative_coeff + sum_of_coefficients_minus_1), (nonnegative_coeff, comb)::terms))
+      ([], zero, PPoly.P.(neg one), []) combs
 
   let gen_ideal tl vars d =
     List.fold_left
-      (fun (psds, ideal) t ->
+      (fun (psds, ideal, terms) t ->
          let psd1, sos1 = sos vars d in
          let psd2, sos2 = sos vars d in
-         (psd1 :: psd2 :: psds, Op.(ideal + (sos1 - sos2) * t)))
-      ([], zero) tl
+         (psd1 :: psd2 :: psds, Op.(ideal + (sos1 - sos2) * t), (sos1, sos2, t)::terms))
+      ([], zero, []) tl
 end
 
 module PolySet = Set.Make(Poly)

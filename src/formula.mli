@@ -21,11 +21,11 @@ module Poly: sig
 
   val sos: VarSet.t -> int -> Matrix.t * t
 
-  val gen_cone: t list -> VarSet.t -> int -> Matrix.t list * t
+  val gen_cone: t list -> VarSet.t -> int -> Matrix.t list * t * (Matrix.elt * t) list
 
-  val gen_strict_cone: t list -> int -> Matrix.t list * t * PPoly.t
+  val gen_strict_cone: t list -> int -> Matrix.t list * t * PPoly.t * (Matrix.elt * t) list
 
-  val gen_ideal: t list -> VarSet.t -> int -> Matrix.t list * t
+  val gen_ideal: t list -> VarSet.t -> int -> Matrix.t list * t * (Matrix.elt * Matrix.elt * t) list
 end
 
 (** Type of formulae *)
