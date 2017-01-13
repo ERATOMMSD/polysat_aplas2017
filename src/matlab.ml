@@ -59,7 +59,7 @@ let pp_formula fmt f =
     pp_print_list ~pp_sep:pp_or pp_conj fmt dnf
 
 
-let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
+let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip; Constraint.certs } =
   let syms =
     List.map Formula.Poly.Matrix.to_list_list psds
     |> List.concat |> List.concat
@@ -75,6 +75,10 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip } =
   let syms_simp = List.reduce_dup syms
   in
   (* Start print *)
+  (* print certificates *)
+  fprintf fmt "%% Certificates: @\n";
+  pp_print_list (fun fmt p -> fprintf fmt "@[<h>%% %a@]" Poly.pp p) fmt certs;
+  pp_force_newline fmt ();
   (* Definition of sdpvar such as a_0,...*)
   let print_sdpvar () =
   fprintf fmt "@[<h>sdpvar %a;@]@\n"

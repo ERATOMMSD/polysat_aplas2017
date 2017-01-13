@@ -39,12 +39,13 @@ let ip_candidate sys1 sys2 vars degree =
   let cert2 = Formula.Poly.Op.(f1 + f2 + h1 + h2 + g2) in
   let zeros2 = List.map snd (Formula.Poly.to_list cert2) in
   let ip2 = Formula.Poly.Op.(f2 + h2 + g2) in
-  [(psdsf1 @ psdsf2 @ psdsg1 @ psdsh1 @ psdsh2, zero1 :: zeros1, ip1, true); (psdsf1 @ psdsf2 @ psdsg2 @ psdsh1 @ psdsh2, zero2 :: zeros2, ip2, false)]
+  [(psdsf1 @ psdsf2 @ psdsg1 @ psdsh1 @ psdsh2, zero1 :: zeros1, ip1, [cert1], true); (psdsf1 @ psdsf2 @ psdsg2 @ psdsh1 @ psdsh2, zero2 :: zeros2, ip2, [cert2], false)]
 
 type sdp = {
   psds : Formula.Poly.Matrix.t list;
   zeros : Formula.PPoly.t list;
   ip : Formula.t;
+  certs: Formula.Poly.t list;
 }
 
 (** [ip f1 f2 template degree] generates an interpolant candidate with the same
@@ -87,21 +88,23 @@ let ip f1 f2 template degree =
              Some c)
     |> List.reduce_options
   in
-  let return_sdp (psds, zeros, ip, strict) =
-    {psds = psds; zeros = (zeros @ (loose_coeffs ip)); ip = if strict then Formula.(gt ip Poly.zero) else Formula.(le ip Poly.zero)}
+  let return_sdp (psds, zeros, ip, certs, strict) =
+    {psds = psds; zeros = (zeros @ (loose_coeffs ip)); ip = if strict then Formula.(gt ip Poly.zero) else Formula.(le ip Poly.zero); certs = certs }
   in
   let rec return_sdpl sdplist =
     match sdplist with
-    | [] -> {psds = []; zeros = []; ip = Formula.tru}
+    | [] -> {psds = []; zeros = []; ip = Formula.tru; certs = []}
     | hd :: tl -> {psds = (return_sdp hd).psds @ (return_sdpl tl).psds;
                    zeros = (return_sdp hd).zeros @ (return_sdpl tl).zeros;
-                   ip = Formula.conjunction (return_sdp hd).ip (return_sdpl tl).ip}
+                   ip = Formula.conjunction (return_sdp hd).ip (return_sdpl tl).ip;
+                  certs = (return_sdp hd).certs @ (return_sdpl tl).certs}
   in
   let rec return_sdpll sdplistlist =
     match sdplistlist with
-    | [] -> {psds = []; zeros = []; ip = Formula.fls}
+    | [] -> {psds = []; zeros = []; ip = Formula.fls; certs = []}
     | hd :: tl -> {psds = (return_sdpl hd).psds @ (return_sdpll tl).psds;
                    zeros = (return_sdpl hd).zeros @ (return_sdpll tl).zeros;
-                   ip = Formula.disjunction (return_sdpl hd).ip (return_sdpll tl).ip}
+                   ip = Formula.disjunction (return_sdpl hd).ip (return_sdpll tl).ip;
+                  certs = (return_sdpl hd).certs @ (return_sdpll tl).certs}
   in
     List.map return_sdpll sdps
