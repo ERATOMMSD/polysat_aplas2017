@@ -228,7 +228,7 @@ let pp_sdp form1 form2 fmt { Constraint.psds; Constraint.zeros; Constraint.ip; C
   fprintf fmt "r = sum(sum(B*U));@\n";
   fprintf fmt "@[original = [%a]@];\n" (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt "; ")  Formula.Poly.pp) syms_simp ;
   fprintf fmt "@[<h>ips = sym(value([%a]));@]@\n" (pp_print_list ~pp_sep:(fun fmt () -> Format.fprintf fmt ",") PPoly.pp) ip_coefs;
-  fprintf fmt "ips = approximate2(cut_epsilon(ips, 100000), depth);@\n";
+  fprintf fmt "ips = approximate2(cut_epsilon(ips, reciprocal_epsilon), depth);@\n";
   print_sdpvar ();
   print_var();
   assign_Q();
@@ -347,13 +347,8 @@ let pp_sdp form1 form2 fmt { Constraint.psds; Constraint.zeros; Constraint.ip; C
   fprintf fmt "end@\n" (* end ret.problem *)
 
 let pp_header fmt () =
-  fprintf fmt "tolerance = 0.01;@\n";
-  fprintf fmt "do_approximate = true;@\n";
-  (* fprintf fmt "easy_gauss = false;@\n"; *)
-  fprintf fmt "simplify_method = '-gauss'; %% -gauss, -smith, -easy_gauss@\n";
-  fprintf fmt "skip_gauss = false;@\n";
-  fprintf fmt "ignore_sc = false;@\n";
-  fprintf fmt "depth = 1;@\n"
+  fprintf fmt "depth = 1;@\n";
+  fprintf fmt "reciprocal_epsilon = 100000;@\n"          
 
   
 
