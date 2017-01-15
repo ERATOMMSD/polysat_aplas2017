@@ -5,7 +5,7 @@ let run commands =
       | Command.Simplify f ->
           printf "%a@\n" Formula.pp f
       | Command.Interpolant (f1, f2, template, degree) ->
-          Constraint.ip f1 f2 template degree |> Matlab.print_code
+          Constraint.ip f1 f2 template degree |> Matlab.print_code f1 f2
     ) commands
 
 let () =

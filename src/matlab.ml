@@ -59,7 +59,7 @@ let pp_formula fmt f =
     pp_print_list ~pp_sep:pp_or pp_conj fmt dnf
 
 
-let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip; Constraint.certs } =
+let pp_sdp form1 form2 fmt { Constraint.psds; Constraint.zeros; Constraint.ip; Constraint.certs } =
   let syms =
     List.map Formula.Poly.Matrix.to_list_list psds
     |> List.concat |> List.concat
@@ -73,6 +73,17 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip; Constraint.ce
 
   let l = Util.List.count 0 (List.length psds) in
   let syms_simp = List.reduce_dup syms
+  in
+  let pp_ip do_show  =
+      fprintf fmt "  ip = '';@\n";
+      fprintf fmt "  @[%a@]" pp_formula ip;
+      pp_print_list (fun fmt var ->
+          fprintf fmt "  ip = strrep(ip, strcat('x', int2str(depends(%a))), '%a');@\n" pp_print_string var pp_print_string var;)
+                    fmt
+                    (List.rev vars);
+      pp_force_newline fmt ();
+      if do_show then
+           fprintf fmt "  fprintf('interpolant := %%s\\n', ip);@\n"
   in
   (* Start print *)
   (* print certificates *)
@@ -236,7 +247,8 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip; Constraint.ce
   pp_force_newline fmt ();
   (* Run solver *)
   fprintf fmt "ret = optimize(F);@\n";
-  fprintf fmt "if ret.problem == 0@\n";
+  fprintf fmt "if ret.problem == 0@\n"; (* if - existence of simple ip *)
+  (* 1st check by linear algebra *)
   fprintf fmt "  A2 = zeros(%i, %i);@\n"  (List.length ip_coefs) (List.length syms_simp);
   fprintf fmt "  B = zeros(%i, 1);@\n" (List.length ip_coefs);  
   for i = 0 to (List.length ip_coefs - 1) do
@@ -250,17 +262,7 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip; Constraint.ce
   fprintf fmt "  A = vertcat(A, A2);@\n";
   fprintf fmt "  B = vertcat(zeros(%i, 1), B);@\n" (List.length zeros_lin);
 
-  fprintf fmt "@[<h>if skip_gauss@];@\n"; (* start skip *)
-  fprintf fmt "@[BB = load_sym('BB')@];@\n";
-  fprintf fmt "@[UU = load_sym('UU')@];@\n";
-  fprintf fmt "@[UUinv = load_sym('UUinv')@];@\n";    
-  fprintf fmt "@[<h>else@];@\n";  (* else skip *)
   fprintf fmt "  [BB,UU,UUinv] = mygauss_mathematica(A);@\n";
-  fprintf fmt "@[save_sym(BB, 'BB')@];@\n";
-  fprintf fmt "@[save_sym(UU, 'UU')@];@\n";
-  fprintf fmt "@[save_sym(UUinv, 'UUinv')@];@\n";      
-  fprintf fmt "@[<h>end@];@\n";   (*end skip *)
-  fprintf fmt "@['Gauss'@]@\n";  
   fprintf fmt "  bias = linsolve_mathematica(A, B);@\n";
   fprintf fmt "@['Linsolve end'@]@\n";    
   fprintf fmt "  r = double(sum(sum(BB*UU)));@\n";  
@@ -269,16 +271,11 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip; Constraint.ce
   fprintf fmt "@[fitted = UUinv*original2@];@\n";
   fprintf fmt "@[ess = fitted(r+1:length(fitted), 1)@];@\n";
   fprintf fmt "@[ess = sym(ess)@];@\n";
-  (* fprintf fmt "@[ess = double(ess)@];@\n"; *)
-  (* fprintf fmt "@[ess = ess/max(abs(ess))@];@\n"; *)
-  (* fprintf fmt "@[[ess1,ess2] = rat(ess)@];@\n"; *)
-  (* fprintf fmt "@[ess = sym(ess1./ess2)@];@\n";     *)
   fprintf fmt "@[fitted = vertcat(zeros(double(r), 1), ess);@]@\n";
   fprintf fmt "@[app = UU*fitted + bias;@]@\n";
   for i = 0 to (List.length(syms_simp) - 1) do
     fprintf fmt "%a = app(%i, 1);@\n" Formula.Poly.pp (List.nth syms_simp i) (i + 1)
   done;
-
 
   pp_force_newline fmt ();
 
@@ -286,61 +283,62 @@ let pp_sdp fmt { Constraint.psds; Constraint.zeros; Constraint.ip; Constraint.ce
   fprintf fmt "fprintf('Checking semidefiniteness...\\n');@\n";
   assign_Q ();
   fprintf fmt "@[<h>valid = valid & %a;@]@\n" (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt " & ") (fun fmt i -> fprintf fmt "check_psd_sym(Q%i)" i)) (List.count 0 (List.length psds));
-  fprintf fmt "if valid == false@\n";
-  fprintf fmt "  pause;@\n";  
-  fprintf fmt "end@\n";
+  (* fprintf fmt "if valid == false@\n"; *)
+  (* fprintf fmt "  pause;@\n";   *)
+  (* fprintf fmt "end@\n"; *)
   
   
   pp_force_newline fmt ();
   fprintf fmt "fprintf('Checking strictcone condition...\\n');@\n";
-  pp_print_list (fun fmt -> fprintf fmt "@[<h>['1 + %a = ' ]@]@\n" Formula.PPoly.pp) fmt zeros_nonlin;
+  (* pp_print_list (fun fmt -> fprintf fmt "@[<h>['1 + %a = ' ]@]@\n" Formula.PPoly.pp) fmt zeros_nonlin; *)
 
   (* fprintf fmt "@[<h>['1 + %a = ' sdisplay(1 + %a)]@]@\n" Formula.PPoly.pp (List.hd zeros) Formula.PPoly.pp (List.hd zeros); *)
-  fprintf fmt "if ignore_sc == false@\n";
   pp_print_list (fun fmt -> fprintf fmt "@[<h>valid = valid & isAlways(1 + %a > 0);@]@\n" Formula.PPoly.pp) fmt zeros_nonlin;  
-  fprintf fmt "if valid == false@\n";
-  fprintf fmt "  pause;@\n";  
-  fprintf fmt "end@\n";
-  fprintf fmt "end@\n";  
+  (* fprintf fmt "if valid == false@\n"; *)
+  (* fprintf fmt "  pause;@\n";   *)
+  (* fprintf fmt "end@\n"; *)
 
   pp_force_newline fmt ();
   fprintf fmt "fprintf('Checking equality...\\n');@\n";
   ignore (List.map (fun p ->
-              (* fprintf fmt "@[<h>['%a = ' sdisplay(%a)]@]@\n" Formula.PPoly.pp p  Formula.PPoly.pp p; *)
-              fprintf fmt "@[<h>['%a = ' ]@]@\n" Formula.PPoly.pp p ;
+              (* fprintf fmt "@[<h>['%a = ' ]@]@\n" Formula.PPoly.pp p ; *)
               fprintf fmt "@[<h>valid = valid & isAlways(@[<h>%a@] == 0);@]@\n"  Formula.PPoly.pp p;
-              fprintf fmt "if valid == false@\n";
-              fprintf fmt "  pause;@\n";
-              fprintf fmt "end@\n"                                            
+              (* fprintf fmt "if valid == false@\n"; *)
+              (* fprintf fmt "  pause;@\n"; *)
+              (* fprintf fmt "end@\n"                                             *)
     ) zeros_lin);
   
 
   pp_force_newline fmt ();  
 
-  (* for i = 0 to (List.length(syms_simp) - 1) do *)
-  (*   fprintf fmt "%a = double(%a);@\n" Formula.Poly.pp (List.nth syms_simp i) Formula.Poly.pp (List.nth syms_simp i); *)
-  (* done; *)
-
+  fprintf fmt "if valid@\n"; (* if - 1st check *)
+  pp_ip true;
+  fprintf fmt "  fprintf('The validity was checked by linear algebra.\\n');@\n";
+  fprintf fmt "else@\n";  (* else - 1st check *)
+  fprintf fmt "  fprintf('The 1st validity checking failed.\\n');@\n";
+  pp_ip false;
+  fprintf fmt "ip_cand = ip;@\n";
+  fprintf fmt "ip = '';@\n";
+  fprintf fmt "%a@\n" pp_formula form1;
+  fprintf fmt "form1 = ip;@\n";
+  fprintf fmt "ip = '';@\n";  
+  fprintf fmt "%a@\n" pp_formula form2;
+  fprintf fmt "form2 = ip;@\n";
+  let v = Formula.Poly.VarSet.elements (Formula.Poly.VarSet.union (Formula.vars form1) (Formula.vars form2))
+  in
+  fprintf fmt "vars = '%a';@\n" (pp_print_list ~pp_sep:(fun fmt () -> Format.fprintf fmt ", ") (fun fmt s -> fprintf fmt "%s" s)) v;
+  fprintf fmt "b = check_ip_mathematica(ip_cand, form1, form2, vars);@\n";
+  fprintf fmt "if b@\n";
+  pp_ip true;
+  fprintf fmt "  fprintf('The 2nd validity checking passed.\\n');@\n";  
+  fprintf fmt "else\n";
+  fprintf fmt "  fprintf('The 2nd validity checking failed.\\n');@\n";    
+  fprintf fmt "end@\n";  
   
-  fprintf fmt "  ip = '';@\n";
-  fprintf fmt "  @[%a@]" pp_formula ip;
-  pp_print_list (fun fmt var ->
-      fprintf fmt "  ip = strrep(ip, strcat('x', int2str(depends(%a))), '%a');@\n" pp_print_string var pp_print_string var;)
-                fmt
-                (List.rev vars);
-  pp_force_newline fmt ();
-  fprintf fmt "  fprintf('interpolant := %%s\\n', ip);@\n";
-  fprintf fmt "if valid@\n";
-  fprintf fmt "  fprintf('This interpolant is valid.\\n');@\n";
-  fprintf fmt "else@\n";
-  fprintf fmt "  fprintf('This interpolant is invalid.\\n');@\n";
-  fprintf fmt "end@\n";
-  
-  
-  
-  fprintf fmt "end@\n";    
-
-
+  fprintf fmt "end@\n";  (* end - 1st check *)
+  fprintf fmt "else@\n";  (* else - existence of simple ip *)
+  fprintf fmt "  fprintf('Could not find a simple interpolant for the given depth.\\n');@\n";
+  fprintf fmt "end@\n";(* end - existence of simple ip *)
 
   fprintf fmt "elseif ret.problem == 1@\n"; (* elseif of ret.problem*)
   fprintf fmt "  disp('Infeasible');@\n";
@@ -359,7 +357,7 @@ let pp_header fmt () =
 
   
 
-let print_code sdps =
+let print_code f1 f2 sdps =
   printf "  @[<v>%a@]" pp_header ();   
-  printf "  @[<v>%a@]" (pp_print_list pp_sdp) sdps;
+  printf "  @[<v>%a@]" (pp_print_list (pp_sdp f1 f2)) sdps;
   printf "  return;@\n"
