@@ -214,18 +214,6 @@ let pp_sdp form1 form2 fmt { Constraint.psds; Constraint.zeros; Constraint.ip; C
     pp_force_newline fmt ();
   done;
   fprintf fmt "@[<h>A=sym(A)@];@\n";
-  fprintf fmt "@[<h>if skip_gauss@];@\n"; (* start skip *)
-  fprintf fmt "@[B = load_sym('B')@];@\n";
-  fprintf fmt "@[U = load_sym('U')@];@\n";
-  fprintf fmt "@[Uinv = load_sym('Uinv')@];@\n";    
-  fprintf fmt "@[<h>else@];@\n";  (* else skip *)
-  fprintf fmt "@[[B,U,Uinv] = mygauss_mathematica(A)@];@\n";
-  fprintf fmt "@[save_sym(B, 'B')@];@\n";
-  fprintf fmt "@[save_sym(U, 'U')@];@\n";
-  fprintf fmt "@[save_sym(Uinv, 'Uinv')@];@\n";      
-  fprintf fmt "@[<h>end@];@\n";   (*end skip *)
-  fprintf fmt "@['Gauss'@]@\n";  
-  fprintf fmt "r = sum(sum(B*U));@\n";
   fprintf fmt "@[original = [%a]@];\n" (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt "; ")  Formula.Poly.pp) syms_simp ;
   fprintf fmt "@[<h>ips = sym(value([%a]));@]@\n" (pp_print_list ~pp_sep:(fun fmt () -> Format.fprintf fmt ",") PPoly.pp) ip_coefs;
   fprintf fmt "ips = approximate2(cut_epsilon(ips, reciprocal_epsilon), depth);@\n";
