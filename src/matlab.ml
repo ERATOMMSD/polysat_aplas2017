@@ -184,8 +184,13 @@ let pp_sdp form1 form2 fmt { Constraint.psds; Constraint.zeros; Constraint.ip; C
   fprintf fmt "%% Test: variables are %a @\n"
           (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt ", ")  Formula.Poly.pp) (syms_simp);
 
-  (* approximate sdp variables by diophantine *)
+  (* start approximate and trial *)
+  fprintf fmt "dio = 0;@\n";
+  fprintf fmt "depth = 1;@\n" ;
   fprintf fmt "orig = [%a];@\n" (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt ", ")  Formula.Poly.pp) (syms_simp);
+  fprintf fmt "while true@\n"; (* approximation loop starts*)
+  (* approximate sdp variables by diophantine *)
+  fprintf fmt "prevdio = dio;@\n";
   fprintf fmt "dio = approximate2(sym(round(orig, round_digits)), depth);@\n";
   for i = 0 to (List.length syms_simp - 1) do
     fprintf fmt "%a = dio(%i);@\n" Formula.Poly.pp (List.nth syms_simp i) (i + 1); 
@@ -212,10 +217,16 @@ let pp_sdp form1 form2 fmt { Constraint.psds; Constraint.zeros; Constraint.ip; C
 
   pp_ip true;
   fprintf fmt "if valid@\n"; (* if - 1st check *)
-  fprintf fmt "  fprintf('The interpolant is valid.\\n');@\n";
+  fprintf fmt "  fprintf('This interpolant is valid.\\n');@\n";
+  fprintf fmt "  return;@\n";  
   fprintf fmt "else@\n"; (* if - 1st check *)  
-  fprintf fmt "  fprintf('The interpolant is invalid.\\n');@\n";  
+  fprintf fmt "  fprintf('Cannot certify the validity of this interpolant.\\n');@\n";  
   fprintf fmt "end@\n";  (* end - 1st check *)
+  fprintf fmt "if prevdio == dio@\n";
+  fprintf fmt "  break;@\n";
+  fprintf fmt "end;@\n" ;
+  fprintf fmt "depth = depth + 1;@\n" ;                     
+  fprintf fmt "end@\n"; (* approximation loop ends *)
 
   fprintf fmt "elseif ret.problem == 1@\n"; (* elseif of ret.problem*)
   fprintf fmt "  disp('Infeasible');@\n";
@@ -224,8 +235,6 @@ let pp_sdp form1 form2 fmt { Constraint.psds; Constraint.zeros; Constraint.ip; C
   fprintf fmt "end@\n" (* end ret.problem *)
 
 let pp_header fmt () =
-  fprintf fmt "depth = 1;@\n";
-  fprintf fmt "reciprocal_epsilon = 100000;@\n";
   fprintf fmt "round_digits = 5;@\n"                    
 
   
