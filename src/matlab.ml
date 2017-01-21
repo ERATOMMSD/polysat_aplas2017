@@ -179,7 +179,7 @@ let pp_sdp form1 form2 fmt { Constraint.psds; Constraint.zeros; Constraint.ip; C
 
   fprintf fmt "if ret.problem == 0@\n"; (* if ret.problem *)
   (* show raw interpolant *)
-  pp_ip true;
+  (* pp_ip true; *)
 
   fprintf fmt "%% Test: variables are %a @\n"
           (pp_print_list ~pp_sep:(fun fmt () -> fprintf fmt ", ")  Formula.Poly.pp) (syms_simp);
@@ -215,9 +215,10 @@ let pp_sdp form1 form2 fmt { Constraint.psds; Constraint.zeros; Constraint.ip; C
   
   pp_force_newline fmt ();  
 
-  pp_ip true;
   fprintf fmt "if valid@\n"; (* if - 1st check *)
+  pp_ip true;
   fprintf fmt "  fprintf('This interpolant is valid.\\n');@\n";
+  fprintf fmt "  toc;@\n";  
   fprintf fmt "  return;@\n";  
   fprintf fmt "else@\n"; (* if - 1st check *)  
   fprintf fmt "  fprintf('Cannot certify the validity of this interpolant.\\n');@\n";  
@@ -235,6 +236,7 @@ let pp_sdp form1 form2 fmt { Constraint.psds; Constraint.zeros; Constraint.ip; C
   fprintf fmt "end@\n" (* end ret.problem *)
 
 let pp_header fmt () =
+  fprintf fmt "tic;@\n"                      ;
   fprintf fmt "round_digits = 5;@\n"                    
 
   
@@ -242,4 +244,5 @@ let pp_header fmt () =
 let print_code f1 f2 sdps =
   printf "  @[<v>%a@]" pp_header ();   
   printf "  @[<v>%a@]" (pp_print_list (pp_sdp f1 f2)) sdps;
+  printf "  toc;@\n";  
   printf "  return;@\n"
