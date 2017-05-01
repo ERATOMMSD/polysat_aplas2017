@@ -1,0 +1,3 @@
+Add the following in extras/sdisplay.m at 37th line:
+elseif isa(p, 'sym')
+	symb_p = char(p);
