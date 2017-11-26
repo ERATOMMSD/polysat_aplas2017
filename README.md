@@ -24,7 +24,8 @@ All the tool and libraries can be installed easily by
   - [SeDuMi](https://github.com/sqlp/sedumi/)
 
 And you have to modify Symbolic MathToolbox by adding 
-```elseif isa(p, 'sym')
+```
+elseif isa(p, 'sym')
         symb_p = char(p);
 ```
 to `extras/sdisplay.m`.
