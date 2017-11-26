@@ -28,7 +28,7 @@ And you have to modify Symbolic MathToolbox by adding
 elseif isa(p, 'sym')
         symb_p = char(p);
 ```
-to `extras/sdisplay.m`.
+to the 37th line of `extras/sdisplay.m`.
 
 ## Compile
 
@@ -38,7 +38,7 @@ to `extras/sdisplay.m`.
 $ omake
 ```
 
-will generates the program `polysat` in the project root directory.
+will generate the program `polysat` in the project root directory.
 
 ### Internal code documents
 
@@ -46,7 +46,7 @@ will generates the program `polysat` in the project root directory.
 $ omake doc
 ```
 
-will generates the HTML document in the directory `src/polysat.doc/`.
+will generate the HTML document in the directory `src/polysat.doc/`.
 
 ### Run unit tests
 
@@ -58,8 +58,8 @@ will run the unit tests.
 
 ## Usage
 
-This tool synthesize an interpolant of the given problem.  Contents of problem
-file is like follows.
+This tool synthesizes an interpolant of the given problem.  The content of a problem
+file is as follows.
 
 ``` scheme:example/simple_circle.smt
 (interpolant
@@ -73,7 +73,7 @@ and the second argument.  So the file above insists to synthesize an interpolant
 polynomial inequality `P(x,y) > 0` implied by `(<= y (- 1))` and
 contradicted by `(< (+ (* x x) (* y y)) 1)`.
 
-The third argument is the degree of polynomials the tool searches (in the experiment section, it is represented by `b`).  Given higher degree, the tool find more
+The third argument is the degree of polynomials the tool searches (in the experiment section, it is represented by `b`).  Given higher degree, the tool finds more
 interpolants (so try the increment of the degree if no interpolant finds), but a
 synthesized interpolant tend to become complex and ofcourse calculation cost
 increases.
