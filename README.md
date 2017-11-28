@@ -2,7 +2,7 @@ PolySAT
 ====
 An implementation of interpolant generation by [1].  We understand that the following workflow is too troublesome, so we are preparing a refactored version that does not depend on MATLAB now.
 
-[1] Takamasa Okudono, Yuki Nishida, Kensuke Kojima, Kohei Suenaga, Kengo Kido and Ichiro Hasuo.  In the Proc. of APLAS, pp.491-533, 2017.
+[1] Takamasa Okudono, Yuki Nishida, Kensuke Kojima, Kohei Suenaga, Kengo Kido and Ichiro Hasuo.  Sharper and Simpler Nonlinear Interpolants for Program Verification.  In the Proc. of APLAS, pp.491-533, 2017.
 
 ## Requirements
 ### To compile and run this program
